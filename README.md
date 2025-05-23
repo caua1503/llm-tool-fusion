@@ -24,28 +24,38 @@
 pip install llm-tool-fusion
 ```
 
-### 📋 Uso Básico
+### 📋 Uso Básico (Exemplo com OpenAI)
 
 ```python
 from llm_tool_fusion import ToolManager
+from openai import OpenAI
+
+client = OpenAI()
 
 # Inicialize o gerenciador de ferramentas
 manager = ToolManager()
 
 # Adicione suas ferramentas personalizadas
 @manager.tool
-def minha_ferramenta(parametro: str, outro_parametro: int) -> str:
+def multiply(numero1: int, numero2: int) -> int:
     """
-    Descrição da sua ferramenta
+    Multiplica doi numeros
     Args:
-        parametro: str
-        outro_parametro: int
+        numero1: int
+        numero2: int
     Returns:
-        str
+        int
     """
 
-    return f"Resultado: {parametro} e {outro_parametro}"
+    return numero1 * numero2
 
+response = client.responses.create(
+    model="gpt-4.1",
+    input=[{"role": "user", "content": "Quanto e 25 * 557 ?"}],
+    tools=manager.get_tools()
+)
+
+print(response.output)
 # Use com seu framework preferido
 # Exemplo com OpenAI, LangChain, Ollama, etc.
 ```
@@ -94,26 +104,38 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 pip install llm-tool-fusion
 ```
 
-### 📋 Basic Usage
+### 📋 Basic Usage (Example with OpenAI)
 
 ```python
 from llm_tool_fusion import ToolManager
+from openai import OpenAI
 
-# Initialize the tool manager
+client = OpenAI()
+
+# Inicialize o gerenciador de ferramentas
 manager = ToolManager()
 
-# Add your custom tools
+# Adicione suas ferramentas personalizadas
 @manager.tool
-def my_tool(parameter: str, other_parameter: int) -> str:
+def multiply(number1: int, number2: int) -> int:
     """
-    Description of your tool
+    Multiplies two numbers
     Args:
-        parameter: str
-        other_parameter: int
+        number1: int
+        number2: int
     Returns:
-        str
+        int
     """
-    return f"Result: {parameter} and {other_parameter}"
+
+    return number1 * number2
+
+response = client.responses.create(
+    model="gpt-4.1",
+    input=[{"role": "user", "content": "what is 25 * 557 ?"}],
+    tools=manager.get_tools()
+)
+
+print(response.output)
 
 # Use with your preferred framework
 # Example with OpenAI, LangChain, Ollama, etc.

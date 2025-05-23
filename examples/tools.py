@@ -1,38 +1,56 @@
 import sys
 import os
 import json
-# Adiciona o diretório pai ao sys.path
+import asyncio
+# Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from llm_tool_fusion import ToolCaller
 
 main = ToolCaller()
 
 @main.tool
-def minha_ferramenta(parametro: str, outro_parametro: int) -> str:
+def multiply(number1: int, number2: int) -> int:
     """
-    Descricao da sua ferramenta
-
+    Multiplies two numbers
     Args:
-        parametro (str): Descricao do parametro
-        outro_parametro (int): Descricao do outro parametro
+        number1: int
+        number2: int
     Returns:
-        palavra: str
+        int
     """
 
-    return f"Resultado: {parametro} e {outro_parametro}"
+    return number1 * number2
 
 @main.async_tool
-async def minha_ferramenta_async(parametro: str, outro_parametro: int) -> str:
+async def fetch_user_data(user_id: str) -> str:
     """
-    Descricao da sua ferramenta assíncrona
-
+    Simulates an asynchronous operation that first finds a user,
+    then fetches related data from two tables in parallel.
     Args:
-        parametro (str): Descricao do parametro
-        outro_parametro (int): Descricao do outro parametro
+        user_id (str): The ID of the user to fetch data for.
     Returns:
-        palavra: str
+        str: A formatted string containing the user's profile information.
     """
-    return f"Resultado: {parametro} e {outro_parametro}"
+
+    print("Searching for user...")
+    await asyncio.sleep(0.2)  
+    if user_id != "123":
+        return "User not found"
+
+    print("User found. Fetching related data...")
+
+    # Defina duas tarefas assíncronas | Define two async tasks
+    async def fetch_orders():
+        await asyncio.sleep(0.3)
+        return "Orders: [Order1, Order2]"
+
+    async def fetch_payments():
+        await asyncio.sleep(0.1)
+        return "Payments: [Paid]"
+
+    orders, payments = await asyncio.gather(fetch_orders(), fetch_payments())
+
+    return f"User Profile:\n{orders}\n{payments}"
 
 # mostra as ferramentas disponíveis | shows available tools
 print(json.dumps(main.get_tools(), indent=4))
