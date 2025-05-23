@@ -5,6 +5,7 @@ import asyncio
 # Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from llm_tool_fusion import ToolCaller
+from external_tools import calculator
 
 main = ToolCaller()
 
@@ -22,7 +23,7 @@ def multiply(number1: int, number2: int) -> int:
     return number1 * number2
 
 @main.async_tool
-async def fetch_user_data(user_id: str) -> str:
+async def fetch_user_data_async(user_id: str) -> str:
     """
     Simulates an asynchronous operation that first finds a user,
     then fetches related data from two tables in parallel.
@@ -52,5 +53,25 @@ async def fetch_user_data(user_id: str) -> str:
 
     return f"User Profile:\n{orders}\n{payments}"
 
-# mostra as ferramentas disponíveis | shows available tools
+#Registrando uma função importada ao agente | Registering an imported function to the agent
+main.register_tool(calculator)
+
+# Ferramentas disponíveis | Available tools
+print("\nFerramentas disponíveis | Available tools:")
 print(json.dumps(main.get_tools(), indent=4))
+print("="*30)
+
+# Nomes das ferramentas assíncronas | Names of available async tools
+print("\nNomes das ferramentas assíncronas | Names of available async tools:")
+print(main.get_name_async_tools())
+print("="*30)
+
+# Nomes das ferramentas síncronas | Names of available syncronous tools
+print("\nNomes das ferramentas síncronas | Names of available syncronous tools:") 
+print(main.get_name_tools())
+print("="*30)
+
+# Este dicionário associa o nome de cada ferramenta a sua respectiva função. | This dictionary associates the name of each tool with its respective function.
+print("\nMapa de ferramentas | Tools map:")
+print(main.get_map_tools())
+print("="*30)
