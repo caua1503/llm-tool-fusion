@@ -1,4 +1,5 @@
 from functools import wraps
+from typing import Callable
 from ._utils import extract_docstring
 
 class ToolCaller:
@@ -7,18 +8,18 @@ class ToolCaller:
         self._async_list_tools = []
         self._tools = []
 
-    def async_tool(self, func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        self._async_list_tools.append(wrapper)
-        return wrapper
-
-    def tool(self, func):
+    def tool(self, func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
         self._list_tools.append(wrapper)
+        return wrapper
+    
+    def async_tool(self, func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        self._async_list_tools.append(wrapper)
         return wrapper
 
     def get_object_tools(self):
@@ -39,4 +40,5 @@ class ToolCaller:
     def get_name_async_tools(self):
         return {f"{func.__name__}" for func in self._async_list_tools}
     
-    
+    def get_name_tools(self):
+        return {f"{func.__name__}" for func in self._list_tools}

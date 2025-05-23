@@ -34,9 +34,17 @@ manager = ToolManager()
 
 # Adicione suas ferramentas personalizadas
 @manager.tool
-def minha_ferramenta(parametro: str) -> str:
-    """Descrição da sua ferramenta"""
-    return f"Resultado: {parametro}"
+def minha_ferramenta(parametro: str, outro_parametro: int) -> str:
+    """
+    Descrição da sua ferramenta
+    Args:
+        parametro: str
+        outro_parametro: int
+    Returns:
+        str
+    """
+
+    return f"Resultado: {parametro} e {outro_parametro}"
 
 # Use com seu framework preferido
 # Exemplo com OpenAI, LangChain, Ollama, etc.
@@ -96,9 +104,16 @@ manager = ToolManager()
 
 # Add your custom tools
 @manager.tool
-def my_tool(parameter: str) -> str:
-    """Description of your tool"""
-    return f"Result: {parameter}"
+def my_tool(parameter: str, other_parameter: int) -> str:
+    """
+    Description of your tool
+    Args:
+        parameter: str
+        other_parameter: int
+    Returns:
+        str
+    """
+    return f"Result: {parameter} and {other_parameter}"
 
 # Use with your preferred framework
 # Example with OpenAI, LangChain, Ollama, etc.
