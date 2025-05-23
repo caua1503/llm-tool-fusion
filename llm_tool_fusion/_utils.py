@@ -3,27 +3,35 @@ import re
 
 def extract_docstring(func):
     """
-    Extrai informações de descrição, parâmetros e retorno de uma docstring.
+    Extrai informações de descrição e parâmetros de uma docstring.
 
     Args:
         func: Função da qual a docstring será extraída.
 
     Returns:
-        dict: Dicionário contendo descrição, parâmetros e retorno em formato JSON.
+        dict: Dicionário contendo name, description e parameters em formato JSON Schema.
     """
     doc = func.__doc__
+    func_name = func.__name__
+    
     if not doc:
         return {
+            "name": func_name,
             "description": "",
-            "parameters": {},
-            "returns": ""
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
         }
 
     # Inicializa a estrutura do resultado
     result = {
+        "name": func_name,
         "description": "",
-        "parameters": {},
-        "returns": ""
+        "parameters": {
+            "type": "object",
+            "properties": {}
+        }
     }
 
     # Divide a docstring em linhas
@@ -34,7 +42,7 @@ def extract_docstring(func):
     # Regex para identificar seções
     param_pattern = re.compile(r'^\s*(Args|Parameters):\s*$')
     return_pattern = re.compile(r'^\s*(Returns|Return):\s*$')
-    param_def_pattern = re.compile(r'^\s*(\w+)\s*\(([^)]+)\):\s*(.*)$')
+    param_def_pattern = re.compile(r'^\s*(\w+)\s*[:(]([^):]*)[):]?\s*:?\s*(.*)$')
 
     for line in lines:
         line = line.strip()
@@ -56,20 +64,18 @@ def extract_docstring(func):
             param_match = param_def_pattern.match(line)
             if param_match:
                 param_name, param_type, param_desc = param_match.groups()
-                result["parameters"][param_name] = {
-                    "type": param_type.strip(),
+                param_type = param_type.strip() if param_type else "string"
+                result["parameters"]["properties"][param_name] = {
+                    "type": param_type,
                     "description": param_desc.strip()
                 }
             elif param_name and line:  # Continuação da descrição do parâmetro
-                result["parameters"][param_name]["description"] += " " + line
-        elif current_section == "returns":
-            if line:
-                result["returns"] += line + " "
+                result["parameters"]["properties"][param_name]["description"] += " " + line
+        # Ignora seção returns
 
     # Limpa espaços extras
     result["description"] = result["description"].strip()
-    result["returns"] = result["returns"].strip()
-    for param in result["parameters"]:
-        result["parameters"][param]["description"] = result["parameters"][param]["description"].strip()
+    for param in result["parameters"]["properties"]:
+        result["parameters"]["properties"][param]["description"] = result["parameters"]["properties"][param]["description"].strip()
 
-    return json.dumps(result, indent=2, ensure_ascii=False)
+    return result
