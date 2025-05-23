@@ -176,7 +176,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/llm-tool-fusion.git
+git clone https://github.com/caua1503/llm-tool-fusion.git
 cd llm-tool-fusion
 
 # Install dependencies
