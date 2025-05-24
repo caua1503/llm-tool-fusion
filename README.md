@@ -63,35 +63,47 @@ response = client.chat.completions.create(
     tools=manager.get_tools()
 )
 
-# Define a função de chamada da IA
-# Esta função lambda permite compatibilidade com diferentes bibliotecas (OpenAI, Anthropic, etc)
-# Você pode adaptar esta função para usar qualquer biblioteca que desejar
-llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
-    model=model, 
-    messages=messages, 
-    tools=tools
-)
+available_tools = manager.get_map_tools()
+async_available_tools = manager.get_name_async_tools()
+    
+# Processamento manual das chamadas de ferramentas
+if response.choices[0].message.tool_calls:
+    tool_results = []
+    for tool_call in response.choices[0].message.tool_calls:
+        if tool_call.function.name in available_tools:
+            # Execução manual da ferramenta
+            import json
+            args = json.loads(tool_call.function.arguments)
 
-# Processa a resposta automaticamente
-final_response = process_tool_calls(
-    response=response,
-    messages=messages,
-    async_tools_name=manager.get_name_async_tools(),
-    available_tools=manager.get_map_tools(),
-    model="gpt-4",
-    llm_call_fn=llm_call_fn,
-    tools=manager.get_tools(),
-    verbose=True,
-    verbose_time=True,
-    clean_messages=True
-)
+            #verificação se a ferramenta e assincrona
+            result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
+                
+            # Coloca os resultados em uma lista
+            tool_results.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "name": tool_call.function.name,
+                "content": str(result)
+            })
+        
+    # Adiciona todas as respostas de uma vez
+    messages.append(response.choices[0].message)
+    messages.extend(tool_results)
+        
+    # Nova chamada para processar o resultado
+    final_response = client.chat.completions.create(
+        model=default_model,
+        messages=messages
+    )
+            
+    return final_response.choices[0].message.content
 
 print(final_response)
 ```
 
-### 🔄 Processamento de Chamadas
+### 🔄 Processamento de Chamadas (compativel apenas com openai)
 
-O llm-tool-fusion oferece um sistema robusto e simples para processar chamadas de ferramentas:
+O llm-tool-fusion oferece um sistema robusto e simples para processar chamadas de ferramentas (instruções de uso em examples):
 
 ```python
 # Processamento automático de chamadas
@@ -106,6 +118,7 @@ final_response = process_tool_calls(
     verbose=True,            # (opcional) Logs detalhados
     verbose_time=True,       # (opcional) Métricas de tempo
     clean_messages=True      # (opcional) Limpa mensagens após processamento, nao e necessario .choices[0].message.content
+    max_chained_calls = 5    # (padrao: 5) número máximo de chamadas encadeadas permitidas
 )
 ```
 
@@ -214,35 +227,47 @@ response = client.chat.completions.create(
     tools=manager.get_tools()
 )
 
-# Define the AI call function
-# This lambda function allows compatibility with different libraries (OpenAI, Anthropic, etc)
-# You can adapt this function to use any library you want
-llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
-    model=model, 
-    messages=messages, 
-    tools=tools
-)
+available_tools = manager.get_map_tools()
+async_available_tools = manager.get_name_async_tools()
+    
+# Manual processing of tool calls
+if response.choices[0].message.tool_calls:
+    tool_results = []
+    for tool_call in response.choices[0].message.tool_calls:
+        if tool_call.function.name in available_tools:
+            # Manual tool execution
+            import json
+            args = json.loads(tool_call.function.arguments)
 
-# Process response automatically
-final_response = process_tool_calls(
-    response=response,
-    messages=messages,
-    async_tools_name=manager.get_name_async_tools(),
-    available_tools=manager.get_map_tools(),
-    model="gpt-4",
-    llm_call_fn=llm_call_fn,
-    tools=manager.get_tools(),
-    verbose=True,
-    verbose_time=True,
-    clean_messages=True
-)
+            #checking if the tool is asynchronous
+            result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
+                
+            # Collect the results in a list
+            tool_results.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "name": tool_call.function.name,
+                "content": str(result)
+            })
+        
+    # Add all responses at once
+    messages.append(response.choices[0].message)
+    messages.extend(tool_results)
+        
+    # New call to process the result
+    final_response = client.chat.completions.create(
+        model=default_model,
+        messages=messages
+    )
+            
+    return final_response.choices[0].message.content
 
 print(final_response)
 ```
 
-### 🔄 Processamento de Chamadas
+### 🔄 Call Processing (only compatible with openai)
 
-llm-tool-fusion provides a robust and simple system for processing tool calls:
+llm-tool-fusion provides a robust and simple system for processing tool calls (instructions for use in examples):
 
 ```python
 # Automatic tool call processing
@@ -257,6 +282,7 @@ final_response = process_tool_calls(
     verbose=True,            # (optional) Detailed logs
     verbose_time=True,       # (optional) Time metrics
     clean_messages=True      # (optional) Clears messages after processing, no .choices[0].message.content required
+    max_chained_calls= 5     # (default: 5) maximum number of chained calls allowed
 )
 ```
 
