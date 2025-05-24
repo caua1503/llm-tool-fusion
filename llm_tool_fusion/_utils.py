@@ -90,7 +90,8 @@ def process_tool_calls(
     model: str, llm_call_fn: Callable, 
     tools: List[Dict[str, Any]], 
     verbose: bool = False,
-    verbose_time: bool = False
+    verbose_time: bool = False,
+    clean_messages: bool = False
     ) -> List[Dict[str, Any]]:
     """
     Processa tool_calls de uma resposta de LLM, executando as ferramentas necessárias e atualizando as mensagens.
@@ -100,14 +101,16 @@ def process_tool_calls(
     llm_call_fn = lambda model, messages, tools: client.chat.completions.create(model=model, messages=messages, tools=tools)
 
     Args:
-        response: resposta inicial do modelo
-        messages: lista de mensagens do chat
-        async_tools_name: lista de nomes de ferramentas assíncronas
-        available_tools: dict nome->função das ferramentas
-        model: nome do modelo
-        llm_call_fn: função que faz a chamada ao modelo (ex: lambda model, messages, tools: ...), como esta na descrição do exemplo
-        tools: lista de ferramentas (no formato OpenAI)
-        verbose: se True, exibe logs detalhados
+        response (obrigatorio): resposta inicial do modelo
+        messages  (obrigatorio): lista de mensagens do chat
+        async_tools_name (obrigatorio): lista de nomes de ferramentas assíncronas
+        available_tools (obrigatorio): dict nome->função das ferramentas
+        model (obrigatorio): nome do modelo
+        llm_call_fn (obrigatorio): função que faz a chamada ao modelo (ex: lambda model, messages, tools: ...), como esta na descrição do exemplo
+        tools (obrigatorio): lista de ferramentas (no formato OpenAI)
+        verbose (opicional): se True, exibe logs detalhados
+        verbose_time (opicional): se True, exibe logs de tempo de execução das funções
+        clean_messages (opicional): se True, limpa as mensagens após o processamento
     Returns:
         Última resposta do modelo após processar todos os tool_calls
     """
@@ -157,6 +160,8 @@ def process_tool_calls(
             if verbose_time:
                 end_time_process = time.time()
                 print(f"[PROCESSO] Tempo de execução total: {end_time_process - start_time_process} segundos")
+            if clean_messages:
+                response = response.choices[0].message.content
             return response
 
 async def process_tool_calls_async(
@@ -168,7 +173,8 @@ async def process_tool_calls_async(
     llm_call_fn: Callable, 
     tools: List[Dict[str, Any]], 
     verbose: bool = False,
-    verbose_time: bool = False
+    verbose_time: bool = False,
+    clean_messages: bool = False
     ) -> List[Dict[str, Any]]:
     """
     Processa tool_calls de uma resposta de LLM, executando as ferramentas necessárias e atualizando as mensagens.
@@ -186,6 +192,8 @@ async def process_tool_calls_async(
         llm_call_fn: função que faz a chamada ao modelo (ex: lambda model, messages, tools: ...), como esta na descrição do exemplo
         tools: lista de ferramentas (no formato OpenAI)
         verbose: se True, exibe logs detalhados
+        verbose_time: se True, exibe logs de tempo
+        clean_messages: se True, limpa as mensagens após o processamento
     Returns:
         Última resposta do modelo após processar todos os tool_calls
     """
@@ -227,11 +235,13 @@ async def process_tool_calls_async(
                     "content": json.dumps(tool_result),
                 })
 
-            response = llm_call_fn(model=model, messages=messages, tools=tools)
+            response = await llm_call_fn(model=model, messages=messages, tools=tools)
         else:
             if verbose:
                 print("[LLM] Nenhum tool_call detectado. Fim do processamento.")
             if verbose_time:
                 end_time_process = time.time()
                 print(f"[PROCESSO] Tempo de execução total: {end_time_process - start_time_process} segundos")
+            if clean_messages:
+                response = response.choices[0].message.content
             return response
