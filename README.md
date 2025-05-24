@@ -27,37 +27,106 @@ pip install llm-tool-fusion
 ### 📋 Uso Básico (Exemplo com OpenAI)
 
 ```python
-from llm_tool_fusion import ToolManager
 from openai import OpenAI
+from llm_tool_fusion import ToolCaller, process_tool_calls
 
+# Inicializa o cliente OpenAI e o gerenciador de ferramentas
 client = OpenAI()
+manager = ToolCaller()
 
-# Inicialize o gerenciador de ferramentas
-manager = ToolManager()
-
-# Adicione suas ferramentas personalizadas
+# Define uma ferramenta usando o decorador
 @manager.tool
-def multiply(numero1: int, numero2: int) -> int:
+def calculate_price(price: float, discount: float) -> float:
     """
-    Multiplica doi numeros
+    Calcula o preço final com desconto
+    
     Args:
-        numero1: int
-        numero2: int
+        price (float): Preço base
+        discount (float): Percentual de desconto
+        
     Returns:
-        int
+        float: Preço final com desconto
     """
+    return price * (1 - discount / 100)
 
-    return numero1 * numero2
+# Prepara a mensagem e faz a chamada ao LLM
+messages = [
+    {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto"}
+]
 
-response = client.responses.create(
-    model="gpt-4.1",
-    input=[{"role": "user", "content": "Quanto e 25 * 557 ?"}],
+# Primeira chamada ao LLM
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=messages,
     tools=manager.get_tools()
 )
 
-print(response.output)
-# Use com seu framework preferido
-# Exemplo com OpenAI, LangChain, Ollama, etc.
+# Define a função de chamada da IA
+# Esta função lambda permite compatibilidade com diferentes bibliotecas (OpenAI, Anthropic, etc)
+# Você pode adaptar esta função para usar qualquer biblioteca que desejar
+llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
+    model=model, 
+    messages=messages, 
+    tools=tools
+)
+
+# Processa a resposta automaticamente
+final_response = process_tool_calls(
+    response=response,
+    messages=messages,
+    async_tools_name=manager.get_name_async_tools(),
+    available_tools=manager.get_map_tools(),
+    model="gpt-4",
+    llm_call_fn=llm_call_fn,
+    tools=manager.get_tools(),
+    verbose=True,
+    verbose_time=True,
+    clean_messages=True
+)
+
+print(final_response)
+```
+
+### 🔄 Processamento de Chamadas
+
+O llm-tool-fusion oferece um sistema robusto e simples para processar chamadas de ferramentas:
+
+```python
+# Processamento automático de chamadas
+final_response = process_tool_calls(
+    response=response,        # Resposta inicial do LLM
+    messages=messages,        # Histórico de mensagens
+    async_tools_name=manager.get_name_async_tools(),  # Nome das ferramentas assíncronas
+    available_tools=manager.get_map_tools(),          # Mapa de ferramentas disponíveis
+    model="gpt-4",           # Modelo a ser usado
+    llm_call_fn=llm_call_fn, # Função de chamada ao LLM
+    tools=manager.get_tools(),# Lista de ferramentas
+    verbose=True,            # (opcional) Logs detalhados
+    verbose_time=True,       # (opcional) Métricas de tempo
+    clean_messages=True      # (opcional) Limpa mensagens após processamento, nao e necessario .choices[0].message.content
+)
+```
+
+#### ✨ Características Principais
+
+- 🔁 **Ciclo Automático**: Processa todas as chamadas de ferramentas até a conclusão
+- ⚡ **Suporte Assíncrono**: Executa ferramentas síncronas e assíncronas automaticamente
+- 📝 **Logs Inteligentes**: Acompanhe a execução com logs detalhados e métricas de tempo
+- 🛡️ **Tratamento de Erros**: Gerenciamento robusto de erros durante a execução
+- 💬 **Gestão de Contexto**: Mantém o histórico de conversas organizado
+- 🔧 **Configurável**: Personalize o comportamento conforme sua necessidade
+
+#### 🚀 Versão Assíncrona
+
+Para aplicações que precisam de processamento assíncrono:
+
+```python
+# Processamento assíncrono de chamadas
+final_response = await process_tool_calls_async(
+    response=response,
+    messages=messages,
+    # ... mesmos parâmetros da versão síncrona ...
+)
 ```
 
 ### 🔧 Frameworks Suportados
@@ -107,38 +176,106 @@ pip install llm-tool-fusion
 ### 📋 Basic Usage (Example with OpenAI)
 
 ```python
-from llm_tool_fusion import ToolManager
 from openai import OpenAI
+from llm_tool_fusion import ToolCaller, process_tool_calls
 
+# Initialize OpenAI client and tool manager
 client = OpenAI()
+manager = ToolCaller()
 
-# Inicialize o gerenciador de ferramentas
-manager = ToolManager()
-
-# Adicione suas ferramentas personalizadas
+# Define a tool using the decorator
 @manager.tool
-def multiply(number1: int, number2: int) -> int:
+def calculate_price(price: float, discount: float) -> float:
     """
-    Multiplies two numbers
+    Calculate final price with discount
+    
     Args:
-        number1: int
-        number2: int
+        price (float): Base price
+        discount (float): Discount percentage
+        
     Returns:
-        int
+        float: Final price with discount
     """
+    return price * (1 - discount / 100)
 
-    return number1 * number2
+# Prepare message and make LLM call
+messages = [
+    {"role": "user", "content": "Calculate the final price of a $100 product with 20% discount"}
+]
 
-response = client.responses.create(
-    model="gpt-4.1",
-    input=[{"role": "user", "content": "what is 25 * 557 ?"}],
+# First LLM call
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=messages,
     tools=manager.get_tools()
 )
 
-print(response.output)
+# Define the AI call function
+# This lambda function allows compatibility with different libraries (OpenAI, Anthropic, etc)
+# You can adapt this function to use any library you want
+llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
+    model=model, 
+    messages=messages, 
+    tools=tools
+)
 
-# Use with your preferred framework
-# Example with OpenAI, LangChain, Ollama, etc.
+# Process response automatically
+final_response = process_tool_calls(
+    response=response,
+    messages=messages,
+    async_tools_name=manager.get_name_async_tools(),
+    available_tools=manager.get_map_tools(),
+    model="gpt-4",
+    llm_call_fn=llm_call_fn,
+    tools=manager.get_tools(),
+    verbose=True,
+    verbose_time=True,
+    clean_messages=True
+)
+
+print(final_response)
+```
+
+### 🔄 Processamento de Chamadas
+
+llm-tool-fusion provides a robust and simple system for processing tool calls:
+
+```python
+# Automatic tool call processing
+final_response = process_tool_calls(
+    response=response,        # Initial response from the LLM
+    messages=messages,        # Message history
+    async_tools_name=manager.get_name_async_tools(),  # Names of asynchronous tools
+    available_tools=manager.get_map_tools(),          # Map of available tools
+    model="gpt-4",           # Model to be used
+    llm_call_fn=llm_call_fn, # Function to call the LLM
+    tools=manager.get_tools(),# List of tools
+    verbose=True,            # (optional) Detailed logs
+    verbose_time=True,       # (optional) Time metrics
+    clean_messages=True      # (optional) Clears messages after processing, no .choices[0].message.content required
+)
+```
+
+#### ✨ Main Features
+
+- 🔁 **Automatic Loop**: Processes all tool calls to completion
+- ⚡ **Asynchronous Support**: Runs synchronous and asynchronous tools automatically
+- 📝 **Smart Logs**: Track execution with detailed logs and time metrics
+- 🛡️ **Error Handling**: Robust error management during execution
+- 💬 **Context Management**: Keeps conversation history organized
+- 🔧 **Configurable**: Customize behavior to your needs
+
+#### 🚀 Versão Assíncrona
+
+For applications that need asynchronous processing:
+
+```python
+# Asynchronous processing of tool calls
+final_response = await process_tool_calls_async(
+    response=response,
+    messages=messages,
+    # ... same parameters as the synchronous version ...
+)
 ```
 
 ### 🔧 Supported Frameworks
