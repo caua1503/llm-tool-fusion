@@ -22,11 +22,8 @@ from llm_tool_fusion import ToolCaller
 # =============================================
 
 async def traditional_async_way():
-    client = AsyncOpenAI(
-        base_url="http://localhost:11434/v1",
-        api_key="ollama",
-    )
-    default_model = "qwen2.53b:latest"
+    client = AsyncOpenAI()
+    default_model = "gpt-4o"
 
     # Precisa implementar manualmente o gerenciamento de ferramentas assíncronas
     # Need to manually implement async tools management
@@ -145,11 +142,9 @@ async def traditional_async_way():
 # =============================================
 
 async def llm_tool_fusion_async_way():
-    client = AsyncOpenAI(base_url="http://localhost:11434/v1",
-                    api_key="ollama",
-                    )
+    client = AsyncOpenAI()
     manager = ToolCaller()
-    default_model = "qwen2.53b:latest"
+    default_model = "gpt-4o"
     # Definição simples com decorador async_tool
     # Simple definition with async_tool decorator
     @manager.async_tool
