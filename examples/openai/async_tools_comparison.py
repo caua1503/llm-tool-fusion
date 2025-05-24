@@ -111,23 +111,27 @@ async def traditional_async_way():
     # Precisa implementar manualmente a lógica de execução assíncrona
     # Need to manually implement async execution logic
     if response.choices[0].message.tool_calls:
-        tool_call = response.choices[0].message.tool_calls[0]
-        if tool_call.function.name in available_tools:
-            # Execução manual das chamadas assíncronas
-            # Manual execution of async calls
-            import json
-            args = json.loads(tool_call.function.arguments)
-            
-            #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
-            result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else await available_tools[tool_call.function.name](**args)
-            
+        tool_results = []
+        for tool_call in response.choices[0].message.tool_calls:
+            if tool_call.function.name in available_tools:
+                # Execução manual das chamadas assíncronas
+                # Manual execution of async calls
+                import json
+                args = json.loads(tool_call.function.arguments)
+                
+                #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
+                result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else await available_tools[tool_call.function.name](**args)
+                
+                tool_results.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": str(result)
+                })
+                
             messages.append(response.choices[0].message)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": "get_user_info",
-                "content": str(result)
-            })
+            messages.extend(tool_results)
+            
             # Segunda chamada para processar o resultado
             final_response = await client.chat.completions.create(
                 model=default_model,
@@ -209,23 +213,27 @@ async def llm_tool_fusion_async_way():
     # Processamento automático das chamadas assíncronas
     # Automatic processing of async calls
     if response.choices[0].message.tool_calls:
-        tool_call = response.choices[0].message.tool_calls[0]
-        if tool_call.function.name in available_tools:
-            # Execução manual das chamadas assíncronas
-            # Manual execution of async calls
-            import json
-            args = json.loads(tool_call.function.arguments)
-            
-            #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
-            result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else await available_tools[tool_call.function.name](**args)
-            
+        tool_results = []
+        for tool_call in response.choices[0].message.tool_calls:
+            if tool_call.function.name in available_tools:
+                # Execução manual das chamadas assíncronas
+                # Manual execution of async calls
+                import json
+                args = json.loads(tool_call.function.arguments)
+                
+                #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
+                result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else await available_tools[tool_call.function.name](**args)
+
+                tool_results.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": str(result)
+                })
+
             messages.append(response.choices[0].message)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": "get_user_info",
-                "content": str(result)
-            })
+            messages.extend(tool_results)
+            
             # Segunda chamada para processar o resultado
             final_response = await client.chat.completions.create(
                 model=default_model,

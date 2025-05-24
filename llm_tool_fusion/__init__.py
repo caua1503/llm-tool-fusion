@@ -1,5 +1,4 @@
-from ._core import ToolCaller
-from ._utils import process_tool_calls, process_tool_calls_async
+from ._core import ToolCaller, process_tool_calls, process_tool_calls_async
 
 __all__ = ["ToolCaller", "process_tool_calls", "process_tool_calls_async"]
 

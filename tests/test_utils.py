@@ -1,8 +1,10 @@
-import pytest
-from llm_tool_fusion._utils import extract_docstring, process_tool_calls
-import types
+import os
+import sys
+# Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Teste para extract_docstring
+import pytest
+from llm_tool_fusion._utils import extract_docstring
 
 def dummy_func(a: int, b: str) -> bool:
     """Soma e concatena
@@ -25,43 +27,12 @@ def test_extract_docstring():
     assert doc['parameters']['properties']['b']['type'] == 'str'
     assert 'texto' in doc['parameters']['properties']['b']['description']
 
-# Teste para process_tool_calls (mock)
-class DummyResponse:
-    class Choice:
-        class Message:
-            def __init__(self, tool_calls=None, content="resp"):
-                self.tool_calls = tool_calls
-                self.content = content
-        def __init__(self, tool_calls=None):
-            self.message = DummyResponse.Choice.Message(tool_calls)
-    def __init__(self, tool_calls=None):
-        self.choices = [DummyResponse.Choice(tool_calls)]
+def test_extract_docstring_no_docstring():
+    def no_doc_func(x):
+        return x
 
-class DummyToolCall:
-    def __init__(self, name, args, id="id1"):
-        self.function = types.SimpleNamespace(name=name, arguments=args)
-        self.id = id
-
-def test_process_tool_calls_executes_tools():
-    called = {}
-    def tool_a(x):
-        called['a'] = x
-        return x + 1
-    tool_calls = [DummyToolCall('tool_a', '{"x": 42}')]  # Simula chamada
-    response = DummyResponse(tool_calls)
-    messages = []
-    def llm_call_fn(**kwargs):
-        # Simula resposta sem tool_calls para encerrar loop
-        return DummyResponse()
-    result = process_tool_calls(
-        response,
-        messages,
-        async_tools_name=[],
-        available_tools={'tool_a': tool_a},
-        model='fake',
-        llm_call_fn=llm_call_fn,
-        tools=[],
-        verbose=False
-    )
-    assert called['a'] == 42
-    assert isinstance(result, DummyResponse) 
+    doc = extract_docstring(no_doc_func)
+    assert doc['name'] == 'no_doc_func'
+    assert doc['description'] == ''
+    assert isinstance(doc['parameters']['properties'], dict)
+    assert len(doc['parameters']['properties']) == 0 

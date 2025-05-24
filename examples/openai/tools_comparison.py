@@ -27,8 +27,8 @@ def traditional_tool_processing():
     def calculate_price(price: float, discount: float) -> float:
         return price * (1 - discount / 100)
     
-    async def example_async_tool(param: str) -> str:
-        return f"Async tool result: {param}"
+    async def get_user_info_async_tool(id: str) -> str:
+        return f"User info: joao"
     
     # Definição das ferramentas
     # Tools definition
@@ -53,21 +53,38 @@ def traditional_tool_processing():
                     "required": ["price", "discount"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_user_info_async_tool",
+                "description": "Get user info",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "str",
+                            "description": "User id"
+                        }
+                    }
+                }
+            }
         }
     ]
     
     available_tools = {
-        "calculate_price": calculate_price
+        "calculate_price": calculate_price,
+        "get_user_info_async_tool": get_user_info_async_tool
     }
     async_available_tools = {
-        "example_async_tool": example_async_tool
+        "get_user_info_async_tool": get_user_info_async_tool
     }
     
     # Primeira chamada para obter a intenção do LLM
     # First call to get LLM's intention
 
     messages = [
-        {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto"}
+        {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto e pegue o nome do usuario com id 1"}
     ]
 
     response = client.chat.completions.create(
@@ -79,34 +96,36 @@ def traditional_tool_processing():
     # Processamento manual das chamadas de ferramentas
     # Manual processing of tool calls
     if response.choices[0].message.tool_calls:
-        tool_call = response.choices[0].message.tool_calls[0]
-        if tool_call.function.name in available_tools:
-            # Execução manual da ferramenta
-            # Manual tool execution
-            import json
-            args = json.loads(tool_call.function.arguments)
+        tool_results = []
+        for tool_call in response.choices[0].message.tool_calls:
+            if tool_call.function.name in available_tools:
+                # Execução manual da ferramenta
+                # Manual tool execution
+                import json
+                args = json.loads(tool_call.function.arguments)
 
-            #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
-            result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
+                #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
+                result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
+                
+                # Coleta os resultados em uma lista
+                tool_results.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": str(result)
+                })
+                
+        messages.append(response.choices[0].message)
+        messages.extend(tool_results)
+                
+        # Nova chamada para processar o resultado
+        # New call to process the result
+        final_response = client.chat.completions.create(
+            model=default_model,
+            messages=messages
+        )
             
-            # Formatação manual da resposta
-            # Manual response formatting
-            messages.append(response.choices[0].message)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": "calculate_price",
-                "content": str(result)
-            })
-            
-            # Nova chamada para processar o resultado
-            # New call to process the result
-            final_response = client.chat.completions.create(
-                model=default_model,
-                messages=messages
-            )
-            
-            return final_response
+        return final_response.choices[0].message.content
 
 # =============================================
 # Método llm-tool-fusion
@@ -133,21 +152,21 @@ def llm_tool_fusion_processing():
         return price * (1 - discount / 100)
     
     @manager.async_tool
-    async def example_async_tool(param: str) -> str:
+    async def get_user_info_async_tool(id: str) -> str:
         """
-        Example asynchronous tool
+        get user info
         
         Args:
-            param (str): Input parameter
+            id (str): id of the user
             
         Returns:
-            str: Async tool result
+            str: User info
 
         """
-        return f"Async tool result: {param}"
+        return f"User info: joao"
     
     messages = [
-        {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto"}
+        {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto e pegue o nome do usuario com id 1"}
     ]
     # Primeira chamada ao LLM
     # First LLM call
@@ -166,42 +185,45 @@ def llm_tool_fusion_processing():
     # Processamento manual das chamadas de ferramentas
     # Manual processing of tool calls
     if response.choices[0].message.tool_calls:
-        tool_call = response.choices[0].message.tool_calls[0]
-        if tool_call.function.name in available_tools:
-            # Execução manual da ferramenta
-            # Manual tool execution
-            import json
-            args = json.loads(tool_call.function.arguments)
+        tool_results = []
+        for tool_call in response.choices[0].message.tool_calls:
+            if tool_call.function.name in available_tools:
+                # Execução manual da ferramenta
+                # Manual tool execution
+                import json
+                args = json.loads(tool_call.function.arguments)
 
-            #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
-            result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
+                #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
+                result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
+                
+                # Coleta os resultados em uma lista
+                tool_results.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": str(result)
+                })
+        
+        # Adiciona todas as respostas de uma vez
+        messages.append(response.choices[0].message)
+        messages.extend(tool_results)
+        
+        # Nova chamada para processar o resultado
+        # New call to process the result
+        final_response = client.chat.completions.create(
+            model=default_model,
+            messages=messages
+        )
             
-            # Formatação manual da resposta
-            # Manual response formatting
-            messages.append(response.choices[0].message)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": "calculate_price",
-                "content": str(result)
-            })
-            
-            # Nova chamada para processar o resultado
-            # New call to process the result
-            final_response = client.chat.completions.create(
-                model=default_model,
-                messages=messages
-            )
-            
-            return final_response
+        return final_response.choices[0].message.content
 
 if __name__ == "__main__":
     print("\nMétodo Tradicional | Traditional Method:")
     print("=" * 50)
     traditional_response = traditional_tool_processing()
-    print(traditional_response.choices[0].message.content)
+    print(traditional_response)
     
     print("\nMétodo llm-tool-fusion | llm-tool-fusion Method:")
     print("=" * 50)
     fusion_response = llm_tool_fusion_processing()
-    print(fusion_response.choices[0].message.content) 
+    print(fusion_response) 
