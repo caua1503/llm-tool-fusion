@@ -17,6 +17,8 @@
 - 🔗 **Compatibilidade Ampla**: Suporte para Ollama, LangChain, OpenAI e outros
 - 📦 **Modularidade**: Arquitetura modular para desenvolvimento escalável
 - ⚡ **Performance**: Otimizado para aplicações em produção
+- 📝 **Menos Verbosidade**: Sintaxe simplificada para declaração de funções
+- 🔄 **Processamento Automático**: Execução automática de chamadas de ferramentas (opcional)
 
 ### 🚀 Instalação
 
@@ -157,7 +159,7 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ### 📖 Description
 
-**llm-tool-fusion** is a Python library that simplifies and unifies the definition and calling of tools for large language models (LLMs). Compatible with popular frameworks that support tool calling, such as Ollama, LangChain, and OpenAI, it allows you to easily integrate new functions and modules, making the development of advanced AI applications more agile and modular through function decorators..
+**llm-tool-fusion** is a Python library that simplifies and unifies the definition and calling of tools for large language models (LLMs). Compatible with popular frameworks that support tool calling, such as Ollama, LangChain, and OpenAI, it allows you to easily integrate new functions and modules, making the development of advanced AI applications more agile and modular through function decorators.
 
 ### ✨ Key Features
 
@@ -166,6 +168,8 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 - 🔗 **Wide Compatibility**: Support for Ollama, LangChain, OpenAI, and others
 - 📦 **Modularity**: Modular architecture for scalable development
 - ⚡ **Performance**: Optimized for production applications
+- 📝 **Less Verbosity**: Simplified syntax for function declarations
+- 🔄 **Automatic Processing**: Automatic execution of tool calls (optional)
 
 ### 🚀 Installation
 
