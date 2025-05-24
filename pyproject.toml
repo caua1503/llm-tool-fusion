@@ -1,6 +1,6 @@
 [project]
 name = "llm-tool-fusion"
-version = "0.1.0"
+version = "0.2.0"
 description = "Biblioteca Python que simplifica e unifica a definição e chamada de ferramentas para grandes modelos de linguagem (LLMs). Compatível com Ollama, LangChain, OpenAI e outros frameworks."
 readme = "README.md"
 requires-python = ">=3.12"
