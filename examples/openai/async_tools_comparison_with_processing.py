@@ -25,8 +25,6 @@ async def traditional_async_way():
     client = AsyncOpenAI()
     default_model = "gpt-4o"
 
-    # Precisa implementar manualmente o gerenciamento de ferramentas assíncronas
-    # Need to manually implement async tools management
     async def get_user_info(user_id: str) -> Dict[str, Any]:
         # Execução automática das chamadas assíncronas
         # Automatic execution of async calls
@@ -91,6 +89,8 @@ async def traditional_async_way():
             }
         }
     ]
+    # Precisa implementar manualmente o gerenciamento de ferramentas assíncronas
+    # Need to manually implement async tools management
     async_available_tools = {
         "get_user_info": get_user_info
     }

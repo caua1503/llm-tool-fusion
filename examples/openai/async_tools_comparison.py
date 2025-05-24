@@ -25,11 +25,7 @@ async def traditional_async_way():
     client = AsyncOpenAI()
     default_model = "gpt-4o"
 
-    # Precisa implementar manualmente o gerenciamento de ferramentas assíncronas
-    # Need to manually implement async tools management
     async def get_user_info(user_id: str) -> Dict[str, Any]:
-        # Execução automática das chamadas assíncronas
-        # Automatic execution of async calls
         async def fetch_user():
             await asyncio.sleep(1)  # Simulando request
             return {"id": user_id, "name": "João", "age": 30}
@@ -91,9 +87,13 @@ async def traditional_async_way():
             }
         }
     ]
+    
+    # Precisa implementar manualmente o gerenciamento de ferramentas assíncronas
+    # Need to manually implement async tools management
     async_available_tools = {
         "get_user_info": get_user_info
     }
+
     available_tools = {
         "get_user_info": get_user_info,
         "calculate_price": calculate_price
@@ -159,8 +159,6 @@ async def llm_tool_fusion_async_way():
         Returns:
             Dict[str, Any]: Dados do usuário e pedidos | User data and orders
         """
-        # Execução automática das chamadas assíncronas
-        # Automatic execution of async calls
         async def fetch_user():
             await asyncio.sleep(1)  # Simulando request
             return {"id": user_id, "name": "João", "age": 30}
@@ -199,6 +197,7 @@ async def llm_tool_fusion_async_way():
     messages = [
         {"role": "user", "content": "Mostre os dados do usuário 123 incluindo pedidos"}
     ]
+    
     # O process_tool_calls gerencia automaticamente a execução assíncrona
     # process_tool_calls automatically manages async execution
     response = await client.chat.completions.create(
