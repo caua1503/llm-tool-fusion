@@ -90,9 +90,7 @@ async def traditional_async_way():
     
     # Precisa implementar manualmente o gerenciamento de ferramentas assíncronas
     # Need to manually implement async tools management
-    async_available_tools = {
-        "get_user_info": get_user_info
-    }
+    async_available_tools = ["get_user_info"]
 
     available_tools = {
         "get_user_info": get_user_info,

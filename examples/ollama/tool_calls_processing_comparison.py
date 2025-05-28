@@ -10,19 +10,17 @@ import sys
 import asyncio
 # Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
-from openai import OpenAI
-from typing import Dict, Any, List
-from llm_tool_fusion import ToolCaller
+from ollama import Client
+from llm_tool_fusion import ToolCaller, process_tool_calls
 
 # =============================================
 # Método Tradicional
 # Traditional Method
 # =============================================
+client = Client()
+default_model = "qwen2.53b:latest"
 
 def traditional_tool_processing():
-    client = OpenAI()
-    default_model = "gpt-4o"
 
     def calculate_price(price: float, discount: float) -> float:
         return price * (1 - discount / 100)
@@ -85,7 +83,7 @@ def traditional_tool_processing():
         {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto e pegue o nome do usuario com id 1"}
     ]
 
-    response = client.chat.completions.create(
+    response = client.chat(
         model=default_model,
         messages=messages,
         tools=tools
@@ -93,37 +91,25 @@ def traditional_tool_processing():
     
     # Processamento manual das chamadas de ferramentas
     # Manual processing of tool calls
-    if response.choices[0].message.tool_calls:
-        tool_results = []
-        for tool_call in response.choices[0].message.tool_calls:
-            if tool_call.function.name in available_tools:
-                # Execução manual da ferramenta
-                # Manual tool execution
-                import json
-                args = json.loads(tool_call.function.arguments)
+    if response.message.tool_calls:
+        tools_results = []
+        for tool in response.message.tool_calls:
+            if function_to_call := available_tools.get(tool.function.name):
+                print('Calling function:', tool.function.name)
+                print('Arguments:', tool.function.arguments)
+                output = function_to_call(**tool.function.arguments) if tool.function.name not in async_available_tools else asyncio.run(function_to_call(**tool.function.arguments))
+                print('Function output:', output)
+                tools_results.append({"role": "tool", "content": str(output), "name": tool.function.name})
+            else:
+                print('Function not found:', tool.function.name)
 
-                #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
-                result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
-                
-                # Coleta os resultados em uma lista
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_call.function.name,
-                    "content": str(result)
-                })
-                
-        messages.append(response.choices[0].message)
-        messages.extend(tool_results)
-                
-        # Nova chamada para processar o resultado
-        # New call to process the result
-        final_response = client.chat.completions.create(
-            model=default_model,
-            messages=messages
-        )
-            
-        return final_response.choices[0].message.content
+        messages.append(response.message)
+        messages.extend(tools_results)
+        final_response = client.chat(model=default_model, messages=messages)
+        return final_response
+    else:
+        print("No tool calls found")
+        return response
 
 # =============================================
 # Método llm-tool-fusion
@@ -131,9 +117,9 @@ def traditional_tool_processing():
 # =============================================
 
 def llm_tool_fusion_processing():
-    client = OpenAI()
-    manager = ToolCaller()
-    default_model = "gpt-4o"
+    client = Client()
+    manager = ToolCaller(framework= "ollama")
+    default_model = "qwen2.53b:latest"
 
     @manager.tool
     def calculate_price(price: float, discount: float) -> float:
@@ -152,15 +138,15 @@ def llm_tool_fusion_processing():
     @manager.async_tool
     async def get_user_info_async_tool(id: str) -> str:
         """
-        get user info
-        
+        Get user info
+
         Args:
-            id (str): id of the user
+            id (str): User id
             
         Returns:
             str: User info
-
         """
+
         return f"User info: joao"
     
     messages = [
@@ -168,7 +154,7 @@ def llm_tool_fusion_processing():
     ]
     # Primeira chamada ao LLM
     # First LLM call
-    response = client.chat.completions.create(
+    response = client.chat(
         model=default_model,
         messages=messages,
         tools=manager.get_tools()
@@ -176,50 +162,27 @@ def llm_tool_fusion_processing():
     
     # Processamento automático com process_tool_calls
     # Automatic processing with process_tool_calls
-
-    available_tools = manager.get_map_tools()
-    async_available_tools = manager.get_name_async_tools()
+    llm_call_fn=lambda model, messages, tools: client.chat(model=model, messages=messages, tools=tools)
     
-    # Processamento manual das chamadas de ferramentas
-    # Manual processing of tool calls
-    if response.choices[0].message.tool_calls:
-        tool_results = []
-        for tool_call in response.choices[0].message.tool_calls:
-            if tool_call.function.name in available_tools:
-                # Execução manual da ferramenta
-                # Manual tool execution
-                import json
-                args = json.loads(tool_call.function.arguments)
-
-                #verificação se a ferramenta e assincrona | checking if the tool is asynchronous
-                result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
-                
-                # Coleta os resultados em uma lista
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_call.function.name,
-                    "content": str(result)
-                })
-        
-        # Adiciona todas as respostas de uma vez
-        messages.append(response.choices[0].message)
-        messages.extend(tool_results)
-        
-        # Nova chamada para processar o resultado
-        # New call to process the result
-        final_response = client.chat.completions.create(
-            model=default_model,
-            messages=messages
-        )
-            
-        return final_response.choices[0].message.content
+    final_response = process_tool_calls(
+        response= response,
+        messages= messages,
+        tool_caller= manager,
+        model= default_model,
+        llm_call_fn= llm_call_fn,
+        verbose=True,  # Defina como False para ocultar logs (opicional, False por padrao) | Set to False to hide logs (optional, False by default)
+        verbose_time=True,  # Defina como False para ocultar logs de tempo (opicional, False por padrao) | Set to False to hide time logs (optional, False by default)
+        max_chained_calls= 5,
+        clean_messages= True
+    )
+    
+    return final_response
 
 if __name__ == "__main__":
     print("\nMétodo Tradicional | Traditional Method:")
     print("=" * 50)
     traditional_response = traditional_tool_processing()
-    print(traditional_response)
+    print(traditional_response.message.content)
     
     print("\nMétodo llm-tool-fusion | llm-tool-fusion Method:")
     print("=" * 50)

@@ -1,8 +1,16 @@
 # llm-tool-fusion
 
+<div align="center">
+  <img src="logo.png" alt="LLM Tool Fusion Logo" width="300">
+</div>
+
+<div align="center">
+
 [![Python](https://img.shields.io/badge/python->=3.12-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](pyproject.toml)
+
+</div>
 
 ## 🇧🇷 Português
 
@@ -101,24 +109,64 @@ if response.choices[0].message.tool_calls:
 print(final_response)
 ```
 
-### 🔄 Processamento de Chamadas (compativel apenas com openai)
+### 🔄 Processamento Automático de Chamadas
 
 O llm-tool-fusion oferece um sistema robusto e simples para processar chamadas de ferramentas (instruções de uso em examples):
 
 ```python
+# Função para chamadas ao LLM
+llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
+    model=model, 
+    messages=messages, 
+    tools=tools
+)
+
 # Processamento automático de chamadas
 final_response = process_tool_calls(
-    response=response,        # Resposta inicial do LLM
-    messages=messages,        # Histórico de mensagens
-    async_tools_name=manager.get_name_async_tools(),  # Nome das ferramentas assíncronas
-    available_tools=manager.get_map_tools(),          # Mapa de ferramentas disponíveis
-    model="gpt-4",           # Modelo a ser usado
-    llm_call_fn=llm_call_fn, # Função de chamada ao LLM
-    tools=manager.get_tools(),# Lista de ferramentas
-    verbose=True,            # (opcional) Logs detalhados
-    verbose_time=True,       # (opcional) Métricas de tempo
-    clean_messages=True      # (opcional) Limpa mensagens após processamento, nao e necessario .choices[0].message.content
-    max_chained_calls = 5    # (padrao: 5) número máximo de chamadas encadeadas permitidas
+    response=response,           # Resposta inicial do LLM
+    messages=messages,           # Histórico de mensagens
+    tool_caller=manager,         # Instância do ToolCaller
+    model="gpt-4",              # Modelo a ser usado
+    llm_call_fn=llm_call_fn,    # Função de chamada ao LLM
+    verbose=True,               # (opcional) Logs detalhados
+    verbose_time=True,          # (opcional) Métricas de tempo
+    clean_messages=True,        # (opcional) Retorna apenas o conteúdo da mensagem
+    use_async_poll=False,       # (opcional) Executa ferramentas assíncronas em paralelo
+    max_chained_calls=5         # (opcional) Máximo de chamadas encadeadas
+)
+```
+
+#### 🎯 Parâmetros Principais
+
+- **`response`** (obrigatório): Resposta inicial do modelo
+- **`messages`** (obrigatório): Lista de mensagens do chat
+- **`tool_caller`** (obrigatório): Instância da classe ToolCaller
+- **`model`** (obrigatório): Nome do modelo
+- **`llm_call_fn`** (obrigatório): Função que faz a chamada ao modelo
+
+#### ⚙️ Parâmetros Opcionais
+
+- **`verbose`**: Exibe logs detalhados da execução
+- **`verbose_time`**: Mostra métricas de tempo de execução
+- **`clean_messages`**: Retorna apenas o conteúdo da mensagem final
+- **`use_async_poll`**: Executa ferramentas assíncronas em paralelo para melhor performance
+- **`max_chained_calls`**: Limite de chamadas encadeadas (padrão: 5)
+
+#### ⚡ Performance com `use_async_poll`
+
+Quando você tem múltiplas ferramentas assíncronas sendo chamadas simultaneamente, o parâmetro `use_async_poll=True` oferece melhor performance:
+
+```python
+# Sem async_poll: ferramentas executam sequencialmente
+final_response = process_tool_calls(
+    # ... outros parâmetros ...
+    use_async_poll=False  # Padrão: execução sequencial
+)
+
+# Com async_poll: ferramentas assíncronas executam em paralelo
+final_response = process_tool_calls(
+    # ... outros parâmetros ...
+    use_async_poll=True   # Execução paralela para melhor performance
 )
 ```
 
@@ -140,7 +188,28 @@ Para aplicações que precisam de processamento assíncrono:
 final_response = await process_tool_calls_async(
     response=response,
     messages=messages,
-    # ... mesmos parâmetros da versão síncrona ...
+    tool_caller=manager,
+    model="gpt-4",
+    llm_call_fn=async_llm_call_fn,
+    verbose=True,
+    use_async_poll=True  # Recomendado para melhor performance
+)
+```
+
+#### 🔧 Suporte a Frameworks
+
+O sistema funciona com diferentes frameworks através do parâmetro `framework` no `ToolCaller`:
+
+```python
+# Para OpenAI (padrão)
+manager = ToolCaller(framework="openai")
+
+# Para Ollama
+manager = ToolCaller(framework="ollama")
+llm_call_fn = lambda model, messages, tools: ollama.Client().chat(
+    model=model,
+    messages=messages,
+    tools=tools
 )
 ```
 
@@ -239,50 +308,67 @@ if response.choices[0].message.tool_calls:
             import json
             args = json.loads(tool_call.function.arguments)
 
-            #checking if the tool is asynchronous
-            result = available_tools[tool_call.function.name](**args) if tool_call.function.name not in async_available_tools else asyncio.run(available_tools[tool_call.function.name](**args)) 
-                
-            # Collect the results in a list
-            tool_results.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": tool_call.function.name,
-                "content": str(result)
-            })
-        
-    # Add all responses at once
-    messages.append(response.choices[0].message)
-    messages.extend(tool_results)
-        
-    # New call to process the result
-    final_response = client.chat.completions.create(
-        model=default_model,
-        messages=messages
-    )
-            
-    return final_response.choices[0].message.content
-
 print(final_response)
 ```
 
-### 🔄 Call Processing (only compatible with openai)
+### 🔄 Automatic Call Processing
 
-llm-tool-fusion provides a robust and simple system for processing tool calls (instructions for use in examples):
+llm-tool-fusion provides a robust and simple system for processing tool calls automatically:
 
 ```python
+# Function for LLM calls
+llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
+    model=model, 
+    messages=messages, 
+    tools=tools
+)
+
 # Automatic tool call processing
 final_response = process_tool_calls(
-    response=response,        # Initial response from the LLM
-    messages=messages,        # Message history
-    async_tools_name=manager.get_name_async_tools(),  # Names of asynchronous tools
-    available_tools=manager.get_map_tools(),          # Map of available tools
-    model="gpt-4",           # Model to be used
-    llm_call_fn=llm_call_fn, # Function to call the LLM
-    tools=manager.get_tools(),# List of tools
-    verbose=True,            # (optional) Detailed logs
-    verbose_time=True,       # (optional) Time metrics
-    clean_messages=True      # (optional) Clears messages after processing, no .choices[0].message.content required
-    max_chained_calls= 5     # (default: 5) maximum number of chained calls allowed
+    response=response,           # Initial response from the LLM
+    messages=messages,           # Message history
+    tool_caller=manager,         # ToolCaller instance
+    model="gpt-4",              # Model to be used
+    llm_call_fn=llm_call_fn,    # Function to call the LLM
+    verbose=True,               # (optional) Detailed logs
+    verbose_time=True,          # (optional) Time metrics
+    clean_messages=True,        # (optional) Returns only message content
+    use_async_poll=False,       # (optional) Execute async tools in parallel
+    max_chained_calls=5         # (optional) Maximum chained calls
+)
+```
+
+#### 🎯 Main Parameters
+
+- **`response`** (required): Initial response from the model
+- **`messages`** (required): List of chat messages
+- **`tool_caller`** (required): ToolCaller class instance
+- **`model`** (required): Model name
+- **`llm_call_fn`** (required): Function that calls the model
+
+#### ⚙️ Optional Parameters
+
+- **`verbose`**: Shows detailed execution logs
+- **`verbose_time`**: Shows execution time metrics
+- **`clean_messages`**: Returns only the final message content
+- **`use_async_poll`**: Executes async tools in parallel for better performance
+- **`max_chained_calls`**: Limit of chained calls (default: 5)
+
+#### ⚡ Performance with `use_async_poll`
+
+When you have multiple asynchronous tools being called simultaneously, the `use_async_poll=True` parameter offers better performance:
+
+```python
+# Without async_poll: tools execute sequentially
+final_response = process_tool_calls(
+    # ... other parameters ...
+    use_async_poll=False  # Default: sequential execution
+)
+
+# With async_poll: async tools execute in parallel
+final_response = process_tool_calls(
+    # ... other parameters ...
+    use_async_poll=True   # Parallel execution for better performance
 )
 ```
 
@@ -295,7 +381,7 @@ final_response = process_tool_calls(
 - 💬 **Context Management**: Keeps conversation history organized
 - 🔧 **Configurable**: Customize behavior to your needs
 
-#### 🚀 Versão Assíncrona
+#### 🚀 Asynchronous Version
 
 For applications that need asynchronous processing:
 
@@ -304,7 +390,28 @@ For applications that need asynchronous processing:
 final_response = await process_tool_calls_async(
     response=response,
     messages=messages,
-    # ... same parameters as the synchronous version ...
+    tool_caller=manager,
+    model="gpt-4",
+    llm_call_fn=async_llm_call_fn,
+    verbose=True,
+    use_async_poll=True  # Recommended for better performance
+)
+```
+
+#### 🔧 Framework Support
+
+The system works with different frameworks through the `framework` parameter in `ToolCaller`:
+
+```python
+# For OpenAI (default)
+manager = ToolCaller(framework="openai")
+
+# For Ollama
+manager = ToolCaller(framework="ollama")
+llm_call_fn = lambda model, messages, tools: ollama.Client().chat(
+    model=model,
+    messages=messages,
+    tools=tools
 )
 ```
 

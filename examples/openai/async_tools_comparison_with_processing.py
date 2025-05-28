@@ -10,20 +10,26 @@ import sys
 import os
 # Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
+from dotenv import load_dotenv
 import asyncio
 from openai import AsyncOpenAI
 from typing import Dict, Any, List
 from llm_tool_fusion import ToolCaller, process_tool_calls_async
+import time
 
+load_dotenv()
+
+client = AsyncOpenAI(
+    base_url=os.getenv("BASE_URL"),
+    api_key=os.getenv("API_KEY"))
+
+default_model = os.getenv("DEFAULT_MODEL")
 # =============================================
 # Método Tradicional
 # Traditional Method
 # =============================================
 
 async def traditional_async_way():
-    client = AsyncOpenAI()
-    default_model = "gpt-4o"
 
     async def get_user_info(user_id: str) -> Dict[str, Any]:
         # Execução automática das chamadas assíncronas
@@ -91,9 +97,8 @@ async def traditional_async_way():
     ]
     # Precisa implementar manualmente o gerenciamento de ferramentas assíncronas
     # Need to manually implement async tools management
-    async_available_tools = {
-        "get_user_info": get_user_info
-    }
+    async_available_tools = ["get_user_info"]
+    
     available_tools = {
         "get_user_info": get_user_info,
         "calculate_price": calculate_price
@@ -146,10 +151,8 @@ async def traditional_async_way():
 # =============================================
 
 async def llm_tool_fusion_async_way():
-    client = AsyncOpenAI()
-    
+
     manager = ToolCaller()
-    default_model = "gpt-4o"
     # Definição simples com decorador async_tool
     # Simple definition with async_tool decorator
     @manager.async_tool
@@ -213,14 +216,12 @@ async def llm_tool_fusion_async_way():
     final_response = await process_tool_calls_async(
         response= response,
         messages= messages,
-        async_tools_name= manager.get_name_async_tools(), 
-        available_tools= manager.get_map_tools(),
+        tool_caller= manager,
         model= default_model,
         llm_call_fn= llm_call_fn,
-        tools= manager.get_tools(),
         verbose=True,  # (opicional): se True, exibe logs detalhados | (optional): If True, displays detailed logs
         verbose_time=True,  # (opicional): se True, exibe logs de tempo de execução das funções | (optional): If True, displays runtime logs of functions
-        clean_messages=False,  #(opicional): se True, limpa as mensagens após o processamento | (optional): If True, clears messages after processing
+        clean_messages=True,  #(opicional): se True, limpa as mensagens após o processamento | (optional): If True, clears messages after processing
         max_chained_calls=5 # (padrão: 5) número máximo de chamadas encadeadas permitidas | # (default: 5) maximum number of chained calls allowed
     )
 
@@ -239,9 +240,9 @@ async def chained_async_tools_example():
     Example that demonstrates chained use of async tools,
     where the result of one tool is used as input for another.
     """
-    client = AsyncOpenAI()
+
     manager = ToolCaller()
-    default_model = "gpt-4o"
+
     
     # Base de dados simulada de usuários
     # Simulated user database
@@ -393,11 +394,9 @@ async def chained_async_tools_example():
     final_response = await process_tool_calls_async(
         response=response,
         messages=messages,
-        async_tools_name=manager.get_name_async_tools(),
-        available_tools=manager.get_map_tools(),
+        tool_caller=manager,
         model=default_model,
         llm_call_fn=llm_call_fn,
-        tools=manager.get_tools(),
         verbose=True,
         verbose_time=True,
         clean_messages=True,
@@ -406,10 +405,164 @@ async def chained_async_tools_example():
     
     return final_response
 
+# =============================================
+# Exemplo de uso com async_poll
+# Example of use with async_poll
+# =============================================
+
+async def async_poll_example():
+    """
+    Exemplo que demonstra o uso do async_poll para executar várias ferramentas
+    assíncronas em paralelo e processar os resultados à medida que ficam disponíveis.
+    
+    Example that demonstrates the use of async_poll to execute several
+    asynchronous tools in parallel and process the results as they become available.
+    """
+    manager = ToolCaller()
+    
+    # Simulação de diferentes APIs com tempos de resposta variados
+    # Simulation of different APIs with varied response times
+    
+    @manager.async_tool
+    async def fetch_weather(city: str) -> Dict:
+        """
+        Busca previsão do tempo para uma cidade.
+        
+        Args:
+            city (str): Nome da cidade
+            
+        Returns:
+            Dict: Dados da previsão do tempo
+        """
+        # Simulando API com tempo de resposta longo (2s)
+        await asyncio.sleep(2)
+        weather_data = {
+            "city": city,
+            "temperature": 28,
+            "condition": "Ensolarado",
+            "humidity": 65
+        }
+        return weather_data
+    
+    @manager.async_tool
+    async def fetch_news(topic: str) -> Dict:
+        """
+        Busca notícias sobre um tópico específico.
+        
+        Args:
+            topic (str): Tópico das notícias
+            
+        Returns:
+            Dict: Lista de notícias
+        """
+        # Simulando API com tempo de resposta médio (2s)
+        await asyncio.sleep(2)
+        
+        news_data = {
+            "topic": topic,
+            "articles": [
+                {"title": f"Novidades sobre {topic}", "source": "Jornal Daily"},
+                {"title": f"Últimas atualizações: {topic}", "source": "Tech News"}
+            ]
+        }
+        return news_data
+    
+    @manager.async_tool
+    async def fetch_stock_price(symbol: str) -> Dict:
+        """
+        Busca cotação atual de uma ação.
+        
+        Args:
+            symbol (str): Símbolo da ação
+            
+        Returns:
+            Dict: Dados da cotação
+        """
+        # Simulando API com tempo de resposta curto (1s)
+        await asyncio.sleep(1)
+        
+        import random
+        price = round(random.uniform(50, 200), 2)
+        stock_data = {
+            "symbol": symbol,
+            "price": price,
+            "change": round(random.uniform(-5, 5), 2),
+            "volume": random.randint(10000, 1000000)
+        }
+        return stock_data
+    
+    # Exemplo de prompt que requer múltiplas consultas assíncronas
+    messages = [
+        {"role": "user", "content": "Preciso das seguintes informações para tomar decisões hoje: previsão do tempo em São Paulo, notícias sobre tecnologia e cotação da ação AAPL"}
+    ]
+    
+    # Primeira chamada ao LLM
+    response = await client.chat.completions.create(
+        model=default_model,
+        messages=messages,
+        tools=manager.get_tools()
+    )
+    
+    # Processamento utilizando async_poll para executar ferramentas em paralelo
+    llm_call_fn = lambda model, messages, tools: client.chat.completions.create(model=model, messages=messages, tools=tools)
+    
+    print("\n[ASYNC POLL] Iniciando execução com async_poll=True")
+    
+    start_time_async_poll = time.time()
+    
+    final_response = await process_tool_calls_async(
+        response=response,
+        messages=messages,
+        tool_caller=manager,
+        model=default_model,
+        llm_call_fn=llm_call_fn,
+        verbose=True,
+        verbose_time=True,
+        clean_messages=True,
+        use_async_poll=True,  # Ativando o async_poll para execução paralela
+        max_chained_calls=5
+    )
+    
+    end_time_async_poll = time.time()
+    
+    # Para comparação, executamos novamente sem async_poll
+    messages = [
+        {"role": "user", "content": "Preciso das seguintes informações para tomar decisões hoje: previsão do tempo em São Paulo, notícias sobre tecnologia e cotação da ação AAPL"}
+    ]
+    
+    response = await client.chat.completions.create(
+        model=default_model,
+        messages=messages,
+        tools=manager.get_tools()
+    )
+    
+    print("\n[SEM ASYNC POLL] Iniciando execução com async_poll=False")
+    
+    start_time_no_async_poll = time.time()
+    
+    regular_response = await process_tool_calls_async(
+        response=response,
+        messages=messages,
+        tool_caller=manager,
+        model=default_model,
+        llm_call_fn=llm_call_fn,
+        verbose=True,
+        verbose_time=True,
+        clean_messages=True,
+        use_async_poll=False,  # Desativando o async_poll para execução sequencial
+        max_chained_calls=5
+    )
+    
+    end_time_no_async_poll = time.time()
+    print(f"\n[ASYNC POLL] Tempo total de execução: {end_time_async_poll - start_time_async_poll} segundos")
+    print(f"\n[SEM ASYNC POLL] Tempo total de execução: {end_time_no_async_poll - start_time_no_async_poll} segundos")
+    
+    return final_response
+
 if __name__ == "__main__":
     print("\nMétodo Tradicional | Traditional Method:")
     print("=" * 50)
-    # print(asyncio.run(traditional_async_way()))
+    print(asyncio.run(traditional_async_way()))
     
     print("\nMétodo llm-tool-fusion | llm-tool-fusion Method:")
     print("=" * 50)
@@ -418,5 +571,9 @@ if __name__ == "__main__":
     print("\nExemplo de Encadeamento de Ferramentas Assíncronas | Async Tool Chaining Example:")
     print("=" * 50)
     print(asyncio.run(chained_async_tools_example()))
+    
+    print("\nExemplo de Async Poll (Execução Paralela) | Async Poll Example (Parallel Execution):")
+    print("=" * 50)
+    print(asyncio.run(async_poll_example()))
 
     

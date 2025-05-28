@@ -1,9 +1,9 @@
 import json
 import re
 from typing import Callable, Any, Dict
+import asyncio
 
-
-def extract_docstring(func: Callable) -> Dict[str, Any]:
+def _extract_docstring(func: Callable) -> Dict[str, Any]:
     """
     Extrai informações de descrição e parâmetros de uma docstring.
 
@@ -82,3 +82,33 @@ def extract_docstring(func: Callable) -> Dict[str, Any]:
         result["parameters"]["properties"][param]["description"] = result["parameters"]["properties"][param]["description"].strip()
 
     return result
+
+async def _poll_fuction_async(avaliable_tools: dict, list_tasks: dict, framework: str) -> list[Dict[str, Any]]:
+    tools_async_list = []
+    tool_async_results = []
+    for tool_call in list_tasks:
+        tools_async_list.append(avaliable_tools[tool_call.get("tool_name")](**tool_call.get("args")))
+
+    results = await asyncio.gather(*tools_async_list, return_exceptions=True)
+    
+    if framework == "openai":
+        for i, task in enumerate(list_tasks):
+            content = str(results[i]) if isinstance(results[i], Exception) else results[i]
+            tool_async_results.append({
+                            "role": "tool",
+                            "tool_call_id": task.get("tool_id"),
+                            "name": task.get("tool_name"),
+                            "content": json.dumps(content),
+                        })
+            
+    elif framework == "ollama":
+        for i, task in enumerate(list_tasks):
+            content = str(results[i]) if isinstance(results[i], Exception) else results[i]
+            tool_async_results.append({
+                "role": "tool",
+                "name": task.get("tool_name"),
+                "content": json.dumps(content),
+            })
+
+
+    return tool_async_results

@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
-from llm_tool_fusion._utils import extract_docstring
+from llm_tool_fusion._utils import _extract_docstring
 
 def dummy_func(a: int, b: str) -> bool:
     """Soma e concatena
@@ -16,8 +16,8 @@ def dummy_func(a: int, b: str) -> bool:
     """
     return True
 
-def test_extract_docstring():
-    doc = extract_docstring(dummy_func)
+def test__extract_docstring():
+    doc = _extract_docstring(dummy_func)
     assert doc['name'] == 'dummy_func'
     assert 'Soma e concatena' in doc['description']
     assert 'a' in doc['parameters']['properties']
@@ -27,11 +27,11 @@ def test_extract_docstring():
     assert doc['parameters']['properties']['b']['type'] == 'str'
     assert 'texto' in doc['parameters']['properties']['b']['description']
 
-def test_extract_docstring_no_docstring():
+def test__extract_docstring_no_docstring():
     def no_doc_func(x):
         return x
 
-    doc = extract_docstring(no_doc_func)
+    doc = _extract_docstring(no_doc_func)
     assert doc['name'] == 'no_doc_func'
     assert doc['description'] == ''
     assert isinstance(doc['parameters']['properties'], dict)

@@ -136,10 +136,16 @@ class DummyToolCall:
         self.id = id
 
 def test_process_tool_calls_executes_tools():
+    # Cria uma instância de ToolCaller e registra a ferramenta
+    caller = ToolCaller()
     called = {}
+    
     def tool_a(x):
         called['a'] = x
         return x + 1
+    
+    caller.register_tool(tool_a, tool_type="sync")
+    
     tool_calls = [DummyToolCall('tool_a', '{"x": 42}')]  # Simula chamada
     response = DummyResponse(tool_calls)
     messages = []
@@ -149,19 +155,23 @@ def test_process_tool_calls_executes_tools():
     result = process_tool_calls(
         response,
         messages,
-        async_tools_name=[],
-        available_tools={'tool_a': tool_a},
+        caller,
         model='fake',
         llm_call_fn=llm_call_fn,
-        tools=[],
         verbose=False
     )
     assert called['a'] == 42
     assert isinstance(result, DummyResponse)
 
 def test_process_tool_calls_clean_messages():
+    # Cria uma instância de ToolCaller e registra a ferramenta
+    caller = ToolCaller()
+    
     def tool_a(x):
         return x + 1
+    
+    caller.register_tool(tool_a, tool_type="sync")
+    
     tool_calls = [DummyToolCall('tool_a', '{"x": 42}')]
     response = DummyResponse(tool_calls)
     messages = []
@@ -173,11 +183,9 @@ def test_process_tool_calls_clean_messages():
     result = process_tool_calls(
         response,
         messages,
-        async_tools_name=[],
-        available_tools={'tool_a': tool_a},
+        caller,
         model='fake',
         llm_call_fn=llm_call_fn,
-        tools=[],
         verbose=False,
         clean_messages=True
     )
@@ -186,9 +194,14 @@ def test_process_tool_calls_clean_messages():
     assert result == "Final response"
 
 def test_process_tool_calls_max_chained_calls():
+    # Cria uma instância de ToolCaller e registra a ferramenta
+    caller = ToolCaller()
     call_count = 0
+    
     def tool_a(x):
         return x + 1
+    
+    caller.register_tool(tool_a, tool_type="sync")
     
     # Criar uma função que sempre retorna tool_calls por 3 vezes, depois retorna sem tool_calls
     def llm_call_fn(**kwargs):
@@ -204,11 +217,9 @@ def test_process_tool_calls_max_chained_calls():
     result = process_tool_calls(
         response,
         messages,
-        async_tools_name=[],
-        available_tools={'tool_a': tool_a},
+        caller,
         model='fake',
         llm_call_fn=llm_call_fn,
-        tools=[],
         verbose=False,
         max_chained_calls=2  # Limite definido para 2 chamadas
     )
@@ -219,9 +230,14 @@ def test_process_tool_calls_max_chained_calls():
     assert isinstance(result, DummyResponse)
 
 def test_process_tool_calls_tool_error():
+    # Cria uma instância de ToolCaller e registra a ferramenta
+    caller = ToolCaller()
     error_message = "Erro de teste"
+    
     def failing_tool(x):
         raise Exception(error_message)
+    
+    caller.register_tool(failing_tool, tool_type="sync")
     
     tool_calls = [DummyToolCall('failing_tool', '{"x": 42}')]
     response = DummyResponse(tool_calls)
@@ -241,11 +257,9 @@ def test_process_tool_calls_tool_error():
     result = process_tool_calls(
         response,
         messages,
-        async_tools_name=[],
-        available_tools={'failing_tool': failing_tool},
+        caller,
         model='fake',
         llm_call_fn=llm_call_fn,
-        tools=[],
         verbose=False
     )
     

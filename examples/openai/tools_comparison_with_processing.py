@@ -10,19 +10,24 @@ import sys
 import asyncio
 # Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
+from dotenv import load_dotenv
 from openai import OpenAI
 from typing import Dict, Any, List
 from llm_tool_fusion import ToolCaller, process_tool_calls
+load_dotenv()
 
+client = OpenAI(
+    base_url=os.getenv("BASE_URL"),
+    api_key=os.getenv("API_KEY")
+)
+default_model = os.getenv("DEFAULT_MODEL")
+framework = os.getenv("FRAMEWORK")
 # =============================================
 # Método Tradicional
 # Traditional Method
 # =============================================
 
 def traditional_tool_processing():
-    client = OpenAI()
-    default_model = "gpt-4o"
 
     def calculate_price(price: float, discount: float) -> float:
         return price * (1 - discount / 100)
@@ -59,9 +64,7 @@ def traditional_tool_processing():
     available_tools = {
         "calculate_price": calculate_price
     }
-    async_available_tools = {
-        "example_async_tool": example_async_tool
-    }
+    async_available_tools = ["example_async_tool"]
     
     # Primeira chamada para obter a intenção do LLM
     # First call to get LLM's intention
@@ -117,10 +120,7 @@ def traditional_tool_processing():
 # =============================================
 
 def llm_tool_fusion_processing():
-    client = OpenAI()
     manager = ToolCaller()
-    default_model = "gpt-4o"
-
     @manager.tool
     def calculate_price(price: float, discount: float) -> float:
         """
@@ -150,7 +150,7 @@ def llm_tool_fusion_processing():
         return f"Async tool result: {param}"
     
     messages = [
-        {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto"}
+        {"role": "user", "content": "oi, tudo bem?"}
     ]
     # Primeira chamada ao LLM
     # First LLM call
@@ -168,11 +168,9 @@ def llm_tool_fusion_processing():
     final_response = process_tool_calls(
         response= response,
         messages= messages,
-        async_tools_name= manager.get_name_async_tools(), 
-        available_tools= manager.get_map_tools(),
+        tool_caller= manager,
         model= default_model,
         llm_call_fn= llm_call_fn,
-        tools= manager.get_tools(),
         verbose=True,  # (opicional): se True, exibe logs detalhados | (optional): If True, displays detailed logs
         verbose_time=True,  # (opicional): se True, exibe logs de tempo de execução das funções | (optional): If True, displays runtime logs of functions
         clean_messages=True  #(opicional): se True, limpa as mensagens após o processamento | (optional): If True, clears messages after processing
@@ -193,9 +191,8 @@ def chained_tools_example():
     Example that demonstrates chained use of tools,
     where the result of one tool is used as input for another.
     """
-    client = OpenAI()
+
     manager = ToolCaller()
-    default_model = "gpt-4o"
     
     # Base de dados simulada de usuários
     # Simulated user database
@@ -239,10 +236,10 @@ def chained_tools_example():
     @manager.tool
     def check_account_balance(user_id: str) -> Dict:
         """
-        Consulta saldo da conta de um usuário.
+        Consulta saldo da conta de um usuário por ID.
 
         Args:
-            user_id(str): Identificador do usuário
+            user_id(str): Identificador do usuário (ID)
         
         Returns:
             dict: Informações do saldo da conta
@@ -282,11 +279,11 @@ def chained_tools_example():
     @manager.tool
     def check_purchase_eligibility(user_id: str, product_id: str) -> Dict:
         """
-        Verifica elegibilidade de compra de um produto.
+        Verifica elegibilidade de compra de um produto (ID) para um usuário (ID).
 
         Args:
-            user_id(str): Identificador do usuário
-            product_id(str): Identificador do produto
+            user_id(str): Identificador do usuário (ID)
+            product_id(str): Identificador do produto (ID)
         
         Returns:
             dict: Resultado da verificação de compra
@@ -335,11 +332,9 @@ def chained_tools_example():
     final_response = process_tool_calls(
         response=response,
         messages=messages,
-        async_tools_name=manager.get_name_async_tools(),
-        available_tools=manager.get_map_tools(),
+        tool_caller= manager,
         model=default_model,
         llm_call_fn=llm_call_fn,
-        tools=manager.get_tools(),
         verbose=True,
         verbose_time=True,
         clean_messages=True,
@@ -349,17 +344,17 @@ def chained_tools_example():
     return final_response
 
 if __name__ == "__main__":
-    print("\nMétodo Tradicional | Traditional Method:")
-    print("=" * 50)
-    traditional_response = traditional_tool_processing()
-    print(traditional_response)
+    # print("\nMétodo Tradicional | Traditional Method:")
+    # print("=" * 50)
+    # traditional_response = traditional_tool_processing()
+    # print(traditional_response)
     
     print("\nMétodo llm-tool-fusion | llm-tool-fusion Method:")
     print("=" * 50)
     fusion_response = llm_tool_fusion_processing()
     print(fusion_response)
     
-    print("\nExemplo de Encadeamento de Ferramentas | Tool Chaining Example:")
-    print("=" * 50)
-    chained_response = chained_tools_example()
-    print(chained_response) 
+    # print("\nExemplo de Encadeamento de Ferramentas | Tool Chaining Example:")
+    # print("=" * 50)
+    # chained_response = chained_tools_example()
+    # print(chained_response) 
