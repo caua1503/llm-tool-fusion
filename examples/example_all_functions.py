@@ -5,7 +5,7 @@ import asyncio
 # Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from llm_tool_fusion import ToolCaller
-from external_tools import calculator
+from external_tools import calculator, standard_deviation, median
 
 main = ToolCaller()
 
@@ -55,6 +55,12 @@ async def fetch_user_data_async(user_id: str) -> str:
 
 #Registrando uma função importada ao agente | Registering an imported function to the agent
 main.register_tool(calculator)
+
+
+list_external_tools = [{"function":standard_deviation, "type":"sync"}, 
+                       {"function":median, "type":"sync"}]
+
+main.register_list_tools(list_external_tools)
 
 # Ferramentas disponíveis | Available tools
 print("\nFerramentas disponíveis | Available tools:")

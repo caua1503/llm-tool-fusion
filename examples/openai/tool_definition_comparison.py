@@ -22,6 +22,35 @@ from llm_tool_fusion import ToolCaller
 def traditional_openai_way():
     client = OpenAI()
     
+    def get_weather(city: str, country: str = None) -> Dict[str, Any]:
+        """
+        Get weather forecast for a city
+        
+        Args:
+            city (str): City name
+            country (str, optional): Country
+            
+        Returns:
+            Dict[str, Any]: Weather information
+        """
+        # Implementação aqui | Implementation here
+        return {"city": city, "country": country, "weather": "sunny"}
+    
+    def create_user(name: str, email: str, age: int = None) -> Dict[str, Any]:
+        """
+        Creates a new user in the system
+        
+        Args:
+            name (str): Full name
+            email (str): User email
+            age (int, optional): Age
+            
+        Returns:
+            Dict[str, Any]: Created user data
+        """
+        # Implementação aqui | Implementation here
+        return {"name": name, "email": email, "age": age}
+    
     # Definição verbosa de ferramentas
     # Verbose tool definition
     tools = [
@@ -72,13 +101,16 @@ def traditional_openai_way():
             }
         }
     ]
-    
+    available_tools = {
+        "get_weather": get_weather,
+        "create_user": create_user
+    }
     # Uso das ferramentas
     # Tool usage
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": "Como está o tempo em São Paulo?"}],
-        tools=tools
+        tools=available_tools
     )
     
     return response
@@ -107,7 +139,7 @@ def llm_tool_fusion_way():
             Dict[str, Any]: Weather information
         """
         # Implementação aqui | Implementation here
-        pass
+        return {"city": city, "country": country, "weather": "sunny"}
     
     @manager.tool
     def create_user(name: str, email: str, age: int = None) -> Dict[str, Any]:
@@ -123,7 +155,7 @@ def llm_tool_fusion_way():
             Dict[str, Any]: Created user data
         """
         # Implementação aqui | Implementation here
-        pass
+        return {"name": name, "email": email, "age": age}
     
     # Uso das ferramentas - muito mais simples!
     # Tool usage - much simpler!

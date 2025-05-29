@@ -69,6 +69,7 @@ class ToolCaller:
             "type": "function",
             "function": _extract_docstring(function)
         })
+        
     def register_list_tools(self, list_tools_for_register: List[dict]):
         """
         EXEMPLO:
