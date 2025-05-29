@@ -1,12 +1,12 @@
 from functools import wraps
-from typing import Callable, Any, List, Dict
+from typing import Callable, Optional,Any, List, Dict
 import asyncio
 import time
 import json
 from ._utils import _extract_docstring, _poll_fuction_async
 
 class ToolCaller:
-    def __init__(self, framework: str = None):
+    def __init__(self, framework: Optional[str] = None):
         self._list_tools = []
         self._async_list_tools = []
         self._tools = []
@@ -94,11 +94,11 @@ def process_tool_calls(
     messages: List[Dict[str, Any]],
     tool_caller: ToolCaller,
     model: str, llm_call_fn: Callable, 
-    verbose: bool = False,
-    verbose_time: bool = False,
-    clean_messages: bool = False,
-    use_async_poll: bool = False,
-    max_chained_calls: int = 5
+    verbose: Optional[bool] = False,
+    verbose_time: Optional[bool] = False,
+    clean_messages: Optional[bool] = False,
+    use_async_poll: Optional[bool] = False,
+    max_chained_calls: Optional[int] = 5
     ) -> List[Dict[str, Any]]:
     """
     Processa tool_calls de uma resposta de LLM, executando as ferramentas necessárias e atualizando as mensagens.
@@ -348,11 +348,11 @@ async def process_tool_calls_async(
     tool_caller: ToolCaller,
     model: str, 
     llm_call_fn: Callable, 
-    verbose: bool = False,
-    verbose_time: bool = False,
-    clean_messages: bool = False,
-    use_async_poll: bool = False,
-    max_chained_calls: int = 5
+    verbose: Optional[bool] = False,
+    verbose_time: Optional[bool] = False,
+    clean_messages: Optional[bool] = False,
+    use_async_poll: Optional[bool] = False,
+    max_chained_calls: Optional[int] = 5
     ) -> List[Dict[str, Any]]:
     """
     Processa tool_calls de uma resposta de LLM, executando as ferramentas necessárias e atualizando as mensagens.
