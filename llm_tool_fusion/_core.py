@@ -56,17 +56,34 @@ class ToolCaller:
     def get_map_tools(self) -> dict[str, Callable]:
         return {f"{func.__name__}": func for func in self._list_tools + self._async_list_tools}
     
-    def register_tool(self, function: Callable, tool_type: str = "sync"):
-        if tool_type == "sync":
-            self._list_tools.append(function)
-        elif tool_type == "async":
-            self._async_list_tools.append(function)
-        else:
-            raise ValueError("Invalid tool type. Use 'sync' or 'async'.")
+    def register_tool(self, function: Callable):
+        self._list_tools.append(function)
         self._tools.append({
             "type": "function",
             "function": _extract_docstring(function)
         })
+    
+    def register_tool_async(self, function: Callable):
+        self._async_list_tools.append(function)
+        self._tools.append({
+            "type": "function",
+            "function": _extract_docstring(function)
+        })
+    def register_list_tools(self, list_tools_for_register: List[dict]):
+        """
+        EXEMPLO:
+        
+        list_tools_for_register = [{"function": Callable, "type": "sync"}, 
+                                   {"function": Callable, "type": "async"}]
+        """
+        for tool in list_tools_for_register:
+            if tool["type"] == "sync":
+                self.register_tool(tool["function"])
+            elif tool["type"] == "async":
+                self.register_tool_async(tool["function"])
+            else:
+                raise ValueError("Invalid tool type. Use 'sync' or 'async'.")
+            
 
     def get_framework(self) -> str:
         return self._framework
@@ -113,33 +130,33 @@ def process_tool_calls(
     chain_count = 0
 
     if verbose:
-        print(f"[PROCESSO] Framework: {framework}")
+        print(f"[PROCESS] Framework: {framework}")
 
     if framework == "openai":
         while True:
             if not hasattr(response.choices[0].message, 'tool_calls') or not response.choices[0].message.tool_calls:
                 if verbose:
-                    print("[LLM] Nenhum tool_call detectado. Fim do processamento.")
+                    print("[LLM] No tool_calls detected. Processing completed.")
                     if chain_count > 0:
-                        print(f"[INFO] Total de chamadas encadeadas: {chain_count}")
+                        print(f"[INFO] Total chained calls: {chain_count}")
                 
                 if verbose_time:
                     end_time_process = time.time()
-                    print(f"[PROCESSO] Tempo de execução total: {end_time_process - start_time_process} segundos")
+                    print(f"[PROCESS] Total execution time: {end_time_process - start_time_process} seconds")
                 
                 if clean_messages:
                     response = response.choices[0].message.content
                 return response
                 
             if verbose:
-                print(f"[LLM] tool_calls detectados: {response.choices[0].message.tool_calls}")
+                print(f"[LLM] Tool_calls detected: {response.choices[0].message.tool_calls}")
             messages.append({"role": "assistant", "content": response.choices[0].message.content})
             
             # Incrementa o contador de chamadas encadeadas
             chain_count += 1
             if chain_count > max_chained_calls:
                 if verbose:
-                    print(f"[AVISO] Número máximo de chamadas encadeadas atingido: {max_chained_calls}")
+                    print(f"[WARNING] Maximum number of chained calls reached: {max_chained_calls}")
                 messages.append({
                     "role": "system",
                     "content": f"The maximum number of chained calls ({max_chained_calls}) has been reached. Please provide an answer based on the results obtained so far."
@@ -158,7 +175,7 @@ def process_tool_calls(
                     tool_args = json.loads(tool_call.function.arguments)
                     
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Executando: {tool_name}, Args: {tool_args}")
+                        print(f"[TOOL] Executing: {tool_name}, Args: {tool_args}")
 
                     start_time = time.time() if verbose_time else None
                     
@@ -171,7 +188,7 @@ def process_tool_calls(
                                 "args": tool_args
                             })
                             if verbose:
-                                print(f"[TOOL] Adicionando {tool_name} à lista de async_poll_list")
+                                print(f"[TOOL] Adding {tool_name} to async_poll_list")
                             continue
                         else:
                             # Executa individualmente
@@ -182,10 +199,10 @@ def process_tool_calls(
                     
                     if verbose_time and not use_async_poll:
                         end_time = time.time()
-                        print(f"[TOOL] Tempo de execução: {end_time - start_time} segundos")
+                        print(f"[TOOL] Execution time: {end_time - start_time} seconds")
 
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Resultado: {tool_result}")
+                        print(f"[TOOL] Result: {tool_result}")
 
                     tool_results.append({
                         "role": "tool",
@@ -195,10 +212,10 @@ def process_tool_calls(
                     })
 
                 except Exception as e:
-                    tool_result = f"Erro ao executar tool '{tool_name}': {e}"
+                    tool_result = f"Error executing tool '{tool_name}': {e}"
 
                     if verbose:
-                        print(f"[ERRO] {tool_result}")
+                        print(f"[ERROR] {tool_result}")
 
                     tool_results.append({
                         "role": "tool",
@@ -210,7 +227,7 @@ def process_tool_calls(
             # Executa ferramentas assíncronas em paralelo se use_async_poll=True
             if use_async_poll and async_poll_list:
                 if verbose:
-                    print(f"[PROCESSO] Executando {len(async_poll_list)} ferramentas assíncronas em paralelo")
+                    print(f"[PROCESS] Executing {len(async_poll_list)} async tools in parallel")
                 
                 async_results = asyncio.run(_poll_fuction_async(
                     avaliable_tools=available_tools, 
@@ -226,13 +243,13 @@ def process_tool_calls(
         while True:
             if not response.message.tool_calls:
                 if verbose:
-                    print("[LLM] Nenhum tool_call detectado. Fim do processamento.")
+                    print("[LLM] No tool_calls detected. Processing completed.")
                     if chain_count > 0:
-                        print(f"[INFO] Total de chamadas encadeadas: {chain_count}")
+                        print(f"[INFO] Total chained calls: {chain_count}")
                 
                 if verbose_time:
                     end_time_process = time.time()
-                    print(f"[PROCESSO] Tempo de execução total: {end_time_process - start_time_process} segundos")
+                    print(f"[PROCESS] Total execution time: {end_time_process - start_time_process} seconds")
                 
                 if clean_messages:
                     return response.message.content
@@ -240,16 +257,16 @@ def process_tool_calls(
                 return response
 
             if verbose:
-                print(f"[LLM] tool_calls detectados: {response.message.tool_calls}")
+                print(f"[LLM] Tool_calls detected: {response.message.tool_calls}")
             
             # Incrementa o contador de chamadas encadeadas
             chain_count += 1
             if chain_count > max_chained_calls:
                 if verbose:
-                    print(f"[AVISO] Número máximo de chamadas encadeadas atingido: {max_chained_calls}")
+                    print(f"[WARNING] Maximum number of chained calls reached: {max_chained_calls}")
                 messages.append({
                     "role": "system",
-                    "content": f"O número máximo de chamadas encadeadas ({max_chained_calls}) foi atingido. Por favor, forneça uma resposta baseada nos resultados obtidos até agora."
+                    "content": f"The maximum number of chained calls ({max_chained_calls}) has been reached. Please provide an answer based on the results obtained so far."
                 })
                 response = llm_call_fn(model=model, messages=messages, tools=tools)
                 continue
@@ -263,7 +280,7 @@ def process_tool_calls(
                 try:
                     tool_args = tool_call.function.arguments
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Executando: {tool_name}, Args: {tool_args}")
+                        print(f"[TOOL] Executing: {tool_name}, Args: {tool_args}")
                     
                     start_time = time.time() if verbose_time else None
                     
@@ -275,7 +292,7 @@ def process_tool_calls(
                                 "args": tool_args
                             })
                             if verbose:
-                                print(f"[TOOL] Adicionando {tool_name} à lista de async_poll_list")
+                                print(f"[TOOL] Adding {tool_name} to async_poll_list")
                             continue
                         else:
                             # Executa individualmente
@@ -286,10 +303,10 @@ def process_tool_calls(
 
                     if verbose_time and not use_async_poll:
                         end_time = time.time()
-                        print(f"[TOOL] Tempo de execução: {end_time - start_time} segundos")
+                        print(f"[TOOL] Execution time: {end_time - start_time} seconds")
 
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Resultado: {tool_result}")
+                        print(f"[TOOL] Result: {tool_result}")
 
                     tools_results.append({
                         "role": "tool", 
@@ -298,10 +315,10 @@ def process_tool_calls(
                     })
 
                 except Exception as e:
-                    tool_result = f"Erro ao executar tool '{tool_name}': {e}"
+                    tool_result = f"Error executing tool '{tool_name}': {e}"
 
                     if verbose:
-                        print(f"[ERRO] {tool_result}")
+                        print(f"[ERROR] {tool_result}")
 
                     tools_results.append({
                         "role": "tool", 
@@ -312,7 +329,7 @@ def process_tool_calls(
             # Executa ferramentas assíncronas em paralelo se use_async_poll=True
             if use_async_poll and async_poll_list:
                 if verbose:
-                    print(f"[PROCESSO] Executando {len(async_poll_list)} ferramentas assíncronas em paralelo")
+                    print(f"[PROCESS] Executing {len(async_poll_list)} async tools in parallel")
                 
                 async_results = asyncio.run(_poll_fuction_async(
                     avaliable_tools=available_tools, 
@@ -369,36 +386,36 @@ async def process_tool_calls_async(
         async_poll_list = []
 
     if verbose:
-        print(f"[PROCESSO] Framework: {framework}\n")
+        print(f"[PROCESS] Framework: {framework}\n")
 
     if framework == "openai":
         while True:
             if not hasattr(response.choices[0].message, 'tool_calls') or not response.choices[0].message.tool_calls:
                 if verbose:
-                    print("[LLM] Nenhum tool_call detectado. Fim do processamento.")
+                    print("[LLM] No tool_calls detected. Processing completed.")
                     if chain_count > 0:
-                        print(f"[INFO] Total de chamadas encadeadas: {chain_count}")
+                        print(f"[INFO] Total chained calls: {chain_count}")
                 
                 if verbose_time:
                     end_time_process = time.time()
-                    print(f"[PROCESSO] Tempo de execução total: {end_time_process - start_time_process} segundos")
+                    print(f"[PROCESS] Total execution time: {end_time_process - start_time_process} seconds")
                 
                 if clean_messages:
                     response = response.choices[0].message.content
                 return response
 
             if verbose:
-                print(f"[LLM] tool_calls detectados: {response.choices[0].message.tool_calls}\n")
+                print(f"[LLM] Tool_calls detected: {response.choices[0].message.tool_calls}\n")
             messages.append({"role": "assistant", "content": response.choices[0].message.content})
             
             # Incrementa o contador de chamadas encadeadas
             chain_count += 1
             if chain_count > max_chained_calls:
                 if verbose:
-                    print(f"[AVISO] Número máximo de chamadas encadeadas atingido: {max_chained_calls}\n")
+                    print(f"[WARNING] Maximum number of chained calls reached: {max_chained_calls}\n")
                 messages.append({
                     "role": "system",
-                    "content": f"O número máximo de chamadas encadeadas ({max_chained_calls}) foi atingido. Por favor, forneça uma resposta baseada nos resultados obtidos até agora."
+                    "content": f"The maximum number of chained calls ({max_chained_calls}) has been reached. Please provide an answer based on the results obtained so far."
                 })
                 response = await llm_call_fn(model=model, messages=messages, tools=tools)
                 continue
@@ -409,7 +426,7 @@ async def process_tool_calls_async(
                 try:
                     tool_args = json.loads(tool_call.function.arguments)
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Executando: {tool_name}, Args: {tool_args}")
+                        print(f"[TOOL] Executing: {tool_name}, Args: {tool_args}")
                     
                     start_time = time.time() if verbose_time else None
                     
@@ -422,7 +439,7 @@ async def process_tool_calls_async(
                                 "args": tool_args
                             })
                             if verbose:
-                                print(f"[TOOL] Adicionando {tool_name} à lista de async_poll_list")
+                                print(f"[TOOL] Adding {tool_name} to async_poll_list")
                             continue
                         else:
                             # Executa individualmente
@@ -433,10 +450,10 @@ async def process_tool_calls_async(
 
                     if verbose_time and not use_async_poll:
                         end_time = time.time()
-                        print(f"[TOOL] Tempo de execução: {end_time - start_time} segundos")
+                        print(f"[TOOL] Execution time: {end_time - start_time} seconds")
 
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Resultado: {tool_result}")
+                        print(f"[TOOL] Result: {tool_result}")
 
                     tool_results.append({
                         "role": "tool",
@@ -446,10 +463,10 @@ async def process_tool_calls_async(
                     })
 
                 except Exception as e:
-                    tool_result = f"Erro ao executar tool '{tool_name}': {e}"
+                    tool_result = f"Error executing tool '{tool_name}': {e}"
 
                     if verbose:
-                        print(f"[ERRO] {tool_result}")
+                        print(f"[ERROR] {tool_result}")
 
                     tool_results.append({
                         "role": "tool",
@@ -463,7 +480,7 @@ async def process_tool_calls_async(
             # Executa ferramentas assíncronas em paralelo se use_async_poll=True
             if use_async_poll and async_poll_list:
                 if verbose:
-                    print(f"[PROCESSO] Executando {len(async_poll_list)} ferramentas assíncronas em paralelo")
+                    print(f"[PROCESS] Executing {len(async_poll_list)} async tools in parallel")
                 
                 async_results = await _poll_fuction_async(
                     avaliable_tools=available_tools, 
@@ -478,13 +495,13 @@ async def process_tool_calls_async(
         while True:
             if not response.message.tool_calls:
                 if verbose:
-                    print("[LLM] Nenhum tool_call detectado. Fim do processamento.")
+                    print("[LLM] No tool_calls detected. Processing completed.")
                     if chain_count > 0:
-                        print(f"[INFO] Total de chamadas encadeadas: {chain_count}")
+                        print(f"[INFO] Total chained calls: {chain_count}")
                 
                 if verbose_time:
                     end_time_process = time.time()
-                    print(f"[PROCESSO] Tempo de execução total: {end_time_process - start_time_process} segundos")
+                    print(f"[PROCESS] Total execution time: {end_time_process - start_time_process} seconds")
                 
                 if clean_messages:
                     return response.message.content
@@ -492,16 +509,16 @@ async def process_tool_calls_async(
                 return response
 
             if verbose:
-                print(f"[LLM] tool_calls detectados: {response.message.tool_calls}")
+                print(f"[LLM] Tool_calls detected: {response.message.tool_calls}")
             
             # Incrementa o contador de chamadas encadeadas
             chain_count += 1
             if chain_count > max_chained_calls:
                 if verbose:
-                    print(f"[AVISO] Número máximo de chamadas encadeadas atingido: {max_chained_calls}")
+                    print(f"[WARNING] Maximum number of chained calls reached: {max_chained_calls}")
                 messages.append({
                     "role": "system",
-                    "content": f"O número máximo de chamadas encadeadas ({max_chained_calls}) foi atingido. Por favor, forneça uma resposta baseada nos resultados obtidos até agora."
+                    "content": f"The maximum number of chained calls ({max_chained_calls}) has been reached. Please provide an answer based on the results obtained so far."
                 })
                 response = await llm_call_fn(model=model, messages=messages, tools=tools)
                 continue
@@ -515,7 +532,7 @@ async def process_tool_calls_async(
                 try:
                     tool_args = tool_call.function.arguments
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Executando: {tool_name}, Args: {tool_args}")
+                        print(f"[TOOL] Executing: {tool_name}, Args: {tool_args}")
                     
                     start_time = time.time() if verbose_time else None
                     
@@ -527,7 +544,7 @@ async def process_tool_calls_async(
                                 "args": tool_args
                             })
                             if verbose:
-                                print(f"[TOOL] Adicionando {tool_name} à lista de async_poll_list")
+                                print(f"[TOOL] Adding {tool_name} to async_poll_list")
                             continue
                         else:
                             # Executa individualmente
@@ -538,10 +555,10 @@ async def process_tool_calls_async(
 
                     if verbose_time and not use_async_poll:
                         end_time = time.time()
-                        print(f"[TOOL] Tempo de execução: {end_time - start_time} segundos")
+                        print(f"[TOOL] Execution time: {end_time - start_time} seconds")
 
                     if verbose and not use_async_poll:
-                        print(f"[TOOL] Resultado: {tool_result}")
+                        print(f"[TOOL] Result: {tool_result}")
 
                     tool_results.append({
                         "role": "tool", 
@@ -550,10 +567,10 @@ async def process_tool_calls_async(
                     })
 
                 except Exception as e:
-                    tool_result = f"Erro ao executar tool '{tool_name}': {e}"
+                    tool_result = f"Error executing tool '{tool_name}': {e}"
 
                     if verbose:
-                        print(f"[ERRO] {tool_result}")
+                        print(f"[ERROR] {tool_result}")
 
                     tool_results.append({
                         "role": "tool", 
@@ -564,7 +581,7 @@ async def process_tool_calls_async(
             # Executa ferramentas assíncronas em paralelo se use_async_poll=True
             if use_async_poll and async_poll_list:
                 if verbose:
-                    print(f"[PROCESSO] Executando {len(async_poll_list)} ferramentas assíncronas em paralelo")
+                    print(f"[PROCESS] Executing {len(async_poll_list)} async tools in parallel")
                 
                 async_results = await _poll_fuction_async(
                     avaliable_tools=available_tools, 
