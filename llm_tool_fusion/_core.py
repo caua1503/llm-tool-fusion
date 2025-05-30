@@ -69,7 +69,7 @@ class ToolCaller:
             "type": "function",
             "function": _extract_docstring(function)
         })
-        
+
     def register_list_tools(self, list_tools_for_register: List[dict]):
         """
         EXEMPLO:
@@ -88,8 +88,7 @@ class ToolCaller:
 
     def get_framework(self) -> str:
         return self._framework
-        
-        
+            
 def process_tool_calls(
     response: Any, 
     messages: List[Dict[str, Any]],
