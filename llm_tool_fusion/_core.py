@@ -35,16 +35,14 @@ class ToolCaller:
         return wrapper
 
     def get_tools(self) -> list[str]:
-        x = 0
         tools = self._list_tools + self._async_list_tools
         self._tools = []
         for tool in tools:
-            tool_info = _extract_docstring(tools[x])
+            tool_info = _extract_docstring(tool)
             self._tools.append({
                 "type": "function",
                 "function": tool_info
             })
-            x += 1
         return self._tools
 
     def get_name_async_tools(self) -> set[str]:
