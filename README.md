@@ -235,6 +235,10 @@ Contribuições são bem-vindas! Por favor:
 
 Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
+### ⚠️ Aviso de Compatibilidade
+
+> **Atenção:** A declaração de ferramentas (funções e decoradores) funciona com qualquer framework de LLM que suporte tool calling. Porém, o processamento automático de chamadas de ferramentas (`process_tool_calls` e `process_tool_calls_async`) possui suporte específico e otimizado apenas para alguns frameworks (como OpenAI, Ollama, etc). Para outros frameworks, pode ser necessário adaptar a função de chamada (`llm_call_fn`).
+
 ---
 
 ## 🇺🇸 English
@@ -436,6 +440,10 @@ Contributions are welcome! Please:
 ### 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### ⚠️ Compatibility Notice
+
+> **Note:** Tool declaration (functions and decorators) works with any LLM framework that supports tool calling. However, automatic tool call processing (`process_tool_calls` and `process_tool_calls_async`) has specific and optimized support only for some frameworks (such as OpenAI, Ollama, etc). For other frameworks, you may need to adapt the call function (`llm_call_fn`).
 
 ---
 

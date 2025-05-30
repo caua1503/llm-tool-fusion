@@ -344,17 +344,17 @@ def chained_tools_example():
     return final_response
 
 if __name__ == "__main__":
-    # print("\nMétodo Tradicional | Traditional Method:")
-    # print("=" * 50)
-    # traditional_response = traditional_tool_processing()
-    # print(traditional_response)
+    print("\nMétodo Tradicional | Traditional Method:")
+    print("=" * 50)
+    traditional_response = traditional_tool_processing()
+    print(traditional_response)
     
     print("\nMétodo llm-tool-fusion | llm-tool-fusion Method:")
     print("=" * 50)
     fusion_response = llm_tool_fusion_processing()
     print(fusion_response)
     
-    # print("\nExemplo de Encadeamento de Ferramentas | Tool Chaining Example:")
-    # print("=" * 50)
-    # chained_response = chained_tools_example()
-    # print(chained_response) 
+    print("\nExemplo de Encadeamento de Ferramentas | Tool Chaining Example:")
+    print("=" * 50)
+    chained_response = chained_tools_example()
+    print(chained_response) 

@@ -35,16 +35,14 @@ class ToolCaller:
         return wrapper
 
     def get_tools(self) -> list[str]:
-        x = 0
         tools = self._list_tools + self._async_list_tools
         self._tools = []
         for tool in tools:
-            tool_info = _extract_docstring(tools[x])
+            tool_info = _extract_docstring(tool)
             self._tools.append({
                 "type": "function",
                 "function": tool_info
             })
-            x += 1
         return self._tools
 
     def get_name_async_tools(self) -> set[str]:
@@ -69,6 +67,7 @@ class ToolCaller:
             "type": "function",
             "function": _extract_docstring(function)
         })
+
     def register_list_tools(self, list_tools_for_register: List[dict]):
         """
         EXEMPLO:
@@ -87,8 +86,7 @@ class ToolCaller:
 
     def get_framework(self) -> str:
         return self._framework
-        
-        
+            
 def process_tool_calls(
     response: Any, 
     messages: List[Dict[str, Any]],

@@ -214,4 +214,8 @@ final_response = await process_tool_calls_async(
 
 ## 📚 Complete Examples
 
-Check the files in the `examples/` folder for complete examples with OpenAI and Ollama. 
+Check the files in the `examples/` folder for complete examples with OpenAI and Ollama.
+
+## ⚠️ Compatibility Notice
+
+> **Note:** Tool declaration (functions and decorators) works with any LLM framework that supports tool calling. However, automatic tool call processing (`process_tool_calls` and `process_tool_calls_async`) has specific and optimized support only for some frameworks (such as OpenAI, Ollama, etc). For other frameworks, you may need to adapt the call function (`llm_call_fn`). 
