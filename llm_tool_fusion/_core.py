@@ -34,7 +34,7 @@ class ToolCaller:
         self._async_list_tools.append(wrapper)
         return wrapper
 
-    def get_tools(self) -> list[str]:
+    def get_tools(self) -> list[dict]:
         tools = self._list_tools + self._async_list_tools
         self._tools = []
         for tool in tools:
@@ -68,7 +68,7 @@ class ToolCaller:
             "function": _extract_docstring(function)
         })
 
-    def register_list_tools(self, list_tools_for_register: List[dict]):
+    def register_list_tools(self, list_tools_for_register: List[dict[Callable, str]]):
         """
         EXEMPLO:
         
@@ -83,7 +83,6 @@ class ToolCaller:
             else:
                 raise ValueError("Invalid tool type. Use 'sync' or 'async'.")
             
-
     def get_framework(self) -> str:
         return self._framework
             
@@ -91,7 +90,8 @@ def process_tool_calls(
     response: Any, 
     messages: List[Dict[str, Any]],
     tool_caller: ToolCaller,
-    model: str, llm_call_fn: Callable, 
+    model: str, 
+    llm_call_fn: Callable, 
     verbose: Optional[bool] = False,
     verbose_time: Optional[bool] = False,
     clean_messages: Optional[bool] = False,
