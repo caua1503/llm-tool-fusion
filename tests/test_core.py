@@ -1,7 +1,5 @@
 import os
 import sys
-# Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
 from llm_tool_fusion._core import ToolCaller, process_tool_calls
@@ -57,7 +55,7 @@ def test_tool_registration_and_listing():
             int
         """
         return z * 3
-    caller.register_tool(baz, tool_type="sync")
+    caller.register_tool(baz)
     assert 'baz' in caller.get_name_tools()
     assert caller.get_map_tools()['baz'](4) == 12
 
@@ -73,8 +71,8 @@ def test_invalid_tool_type():
         """
         return x
     
-    with pytest.raises(ValueError):
-        caller.register_tool(invalid_tool, tool_type="invalid_type")
+    with pytest.raises(ValueError, match="Invalid tool type. Use 'sync' or 'async'."):
+        caller.register_list_tools([{"function": invalid_tool, "type": "invalid_type"}])
 
 def test_get_methods_return_types():
     caller = ToolCaller()
@@ -144,7 +142,7 @@ def test_process_tool_calls_executes_tools():
         called['a'] = x
         return x + 1
     
-    caller.register_tool(tool_a, tool_type="sync")
+    caller.register_tool(tool_a)
     
     tool_calls = [DummyToolCall('tool_a', '{"x": 42}')]  # Simula chamada
     response = DummyResponse(tool_calls)
@@ -170,7 +168,7 @@ def test_process_tool_calls_clean_messages():
     def tool_a(x):
         return x + 1
     
-    caller.register_tool(tool_a, tool_type="sync")
+    caller.register_tool(tool_a)
     
     tool_calls = [DummyToolCall('tool_a', '{"x": 42}')]
     response = DummyResponse(tool_calls)
@@ -201,7 +199,7 @@ def test_process_tool_calls_max_chained_calls():
     def tool_a(x):
         return x + 1
     
-    caller.register_tool(tool_a, tool_type="sync")
+    caller.register_tool(tool_a)
     
     # Criar uma função que sempre retorna tool_calls por 3 vezes, depois retorna sem tool_calls
     def llm_call_fn(**kwargs):
@@ -237,7 +235,7 @@ def test_process_tool_calls_tool_error():
     def failing_tool(x):
         raise Exception(error_message)
     
-    caller.register_tool(failing_tool, tool_type="sync")
+    caller.register_tool(failing_tool)
     
     tool_calls = [DummyToolCall('failing_tool', '{"x": 42}')]
     response = DummyResponse(tool_calls)
