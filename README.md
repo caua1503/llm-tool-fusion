@@ -165,6 +165,7 @@ manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI, confi
 When you have multiple asynchronous tools being called simultaneously, the `use_async_poll=True` parameter offers better performance:
 
 ```python
+#It uses asyncio.gather
 configuration = ProcessingConfig(
     use_async_poll=True
 )
@@ -184,7 +185,6 @@ configuration = ProcessingConfig(
 For applications that need asynchronous processing:
 
 ```python
-#It uses asyncio.gather
 configuration = ProcessingConfig(
     use_async_poll=True  # Recommended for better performance
 )
