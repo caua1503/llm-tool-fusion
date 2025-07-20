@@ -1,15 +1,24 @@
 [project]
 name = "llm-tool-fusion"
-version = "0.2.2"
+version = "0.3.0"
 description = "Biblioteca Python que simplifica e unifica a definição e chamada de ferramentas para grandes modelos de linguagem (LLMs). Compatível com Ollama, LangChain, OpenAI e outros frameworks."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
 [dependency-groups]
+deploy = [
+    "setuptools>=80.9.0",
+]
 dev = [
     "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
     "ruff>=0.12.0",
+    "taskipy>=1.14.1",
+]
+dev-test = [
+    "ollama>=0.5.1",
+    "openai>=1.97.0",
 ]
 
 [tool.ruff]
@@ -17,7 +26,7 @@ line-length = 120
 
 [tool.ruff.lint]
 preview=true
-select = ['I', 'F', 'E', 'W', 'PL', 'PT', 'FAST']
+select = ['I', 'F', 'E', 'W', 'PL', 'PT']
 ignore = ["D100", "D104", "E402", "PLR0913", "PLR0917", "PLR1702", "PLR0914", "PLR0915", "PLR0912", "PLW2901"]
 
 [tool.ruff.format]
