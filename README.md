@@ -54,6 +54,10 @@ You must write your function docstrings using the Google style so that the decor
 """
 ```
 
+## Compatibility
+
+Function definition with ToolCaller is compatible with any framework that supports tool calling. However, automatic tool call processing (process_tool_calls/process_tool_calls_async) is currently optimized only for OpenAI and Ollama frameworks.
+
 ### 📋 Basic Usage (Example with OpenAI)
 
 ```python
@@ -100,13 +104,31 @@ if response.choices[0].message.tool_calls:
         if tool_call.function.name in available_tools:
             import json
             args = json.loads(tool_call.function.arguments)
-            result = available_tools[tool_call.function.name](**args)
-            tool_results.append(result)
-
-print(tool_results)
+            # Check if the tool is async and run accordingly
+            result = (
+                available_tools[tool_call.function.name](**args)
+                if tool_call.function.name not in async_available_tools
+                else asyncio.run(available_tools[tool_call.function.name](**args))
+            )
+            # Build the result in the OpenAI tool call format
+            tool_results.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "name": tool_call.function.name,
+                "content": str(result)
+            })
+    # Add all tool responses to the message history
+    messages.append(response.choices[0].message)
+    messages.extend(tool_results)
+    # New call to process the tool results
+    final_response = client.chat.completions.create(
+        model=manager.get_model(),
+        messages=messages
+    )
+    print(final_response.choices[0].message.content)
 ```
 
-### 🔄 Automatic Tool Call Processing
+### 🔄 Automatic Tool Call Processing (Supported Frameworks Only)
 
 llm-tool-fusion provides a robust and simple system for processing tool calls automatically:
 

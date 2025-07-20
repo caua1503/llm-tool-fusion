@@ -50,6 +50,10 @@ Você deve escrever as docstrings das funções no padrão Google para que os de
 """
 ```
 
+## Compatibilidade
+
+A definição de funções com ToolCaller é compatível com qualquer framework que suporte tool calling. Porém, o processamento automático de chamadas de ferramenta (process_tool_calls/process_tool_calls_async) atualmente tem suporte otimizado apenas para OpenAI e Ollama.
+
 ## 📋 Uso Básico (Exemplo com OpenAI)
 
 ```python
@@ -123,7 +127,7 @@ if response.choices[0].message.tool_calls:
 print(final_response)
 ```
 
-## 🔄 Processamento Automático de Chamadas de Ferramenta
+## 🔄 Processamento Automático de Chamadas de Ferramenta (Apenas Frameworks suportados)
 
 O llm-tool-fusion oferece um sistema robusto e simples para processar chamadas de ferramentas automaticamente:
 
@@ -182,7 +186,7 @@ manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI, confi
 Quando você tem múltiplas ferramentas assíncronas sendo chamadas simultaneamente, o parâmetro `use_async_poll=True` oferece melhor performance:
 
 ```python
-#Ele utiliza o asyncio.gather
+# Utiliza asyncio.gather internamente
 configuration = ProcessingConfig(
     use_async_poll=True
 )
