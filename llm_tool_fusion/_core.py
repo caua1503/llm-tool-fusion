@@ -24,7 +24,8 @@ class FrameworkConstants:
 
     OPENAI = "openai"
     OLLAMA = "ollama"
-    SUPPORTED_FRAMEWORKS = [OPENAI, OLLAMA]
+    OTHER = "other"
+    SUPPORTED_FRAMEWORKS = [OPENAI, OLLAMA, OTHER]
 
 
 class ToolCaller:
