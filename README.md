@@ -134,17 +134,18 @@ llm-tool-fusion provides a robust and simple system for processing tool calls au
 
 ```python
 # Function for LLM calls
-llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
-    model=model, 
-    messages=messages, 
-    tools=tools
-)
+def llm_call_function(model, messages, tools):
+    return client.chat.completions.create(
+        model=model, 
+        messages=messages, 
+        tools=tools
+    )
 
 # Automatic tool call processing
 final_response = manager.process_tool_calls(
     response=response,           # Initial response from the LLM
     messages=messages,           # Message history
-    llm_call_fn=llm_call_fn,     # Function to call the LLM
+    llm_call_fn=llm_call_function,     # Function to call the LLM
 )
 ```
 
@@ -213,16 +214,17 @@ configuration = ProcessingConfig(
 
 manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI, config=configuration)
 
-async_llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
-    model=model, 
-    messages=messages, 
-    tools=tools
-)
+def async_llm_call_function(model, messages, tools):
+    return client.chat.completions.create(
+        model=model, 
+        messages=messages, 
+        tools=tools
+    )
 
 final_response = await manager.process_tool_calls_async(
     response=response,
     messages=messages,
-    llm_call_fn=async_llm_call_fn,
+    llm_call_fn=async_llm_call_function,
 )
 ```
 
@@ -236,11 +238,12 @@ manager = ToolCaller(model="gpt-4.1")  # or framework=FrameworkConstants.OPENAI
 
 # For Ollama
 manager = ToolCaller(model="llama2", framework=FrameworkConstants.OLLAMA)
-llm_call_fn = lambda model, messages, tools: ollama.Client().chat(
-    model=model,
-    messages=messages,
-    tools=tools
-)
+def llm_call_function(model, messages, tools):
+    return ollama.Client().chat(
+        model=model,
+        messages=messages,
+        tools=tools
+    )
 ```
 
 ### 🔧 Supported Frameworks
