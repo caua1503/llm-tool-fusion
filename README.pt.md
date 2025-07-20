@@ -14,12 +14,12 @@
 
 ## 📖 Descrição
 
-**llm-tool-fusion** é uma biblioteca Python que simplifica e unifica a definição e chamada de ferramentas para grandes modelos de linguagem (LLMs). Compatível com frameworks populares que suportam tool calling, como Ollama, LangChain e OpenAI, ela permite integrar facilmente novas funções e módulos, tornando o desenvolvimento de aplicativos avançados de IA mais ágil e modular atraves de decoradores de funções.
+**llm-tool-fusion** é uma biblioteca Python que simplifica e unifica a definição e chamada de ferramentas para grandes modelos de linguagem (LLMs). Compatível com frameworks populares que suportam tool calling, como Ollama, LangChain e OpenAI, ela permite integrar facilmente novas funções e módulos, tornando o desenvolvimento de aplicações avançadas de IA mais ágil e modular através de decoradores de função.
 
 ## ✨ Principais Recursos
 
-- 🔧 **Unificação de APIs**: Interface única para diferentes frameworks de LLM
-- 🚀 **Integração Simplificada**: Adicione novas ferramentas com facilidade
+- 🔧 **Unificação de API**: Interface única para diferentes frameworks de LLM
+- 🚀 **Integração Simplificada**: Adicione novas ferramentas facilmente
 - 🔗 **Compatibilidade Ampla**: Suporte para Ollama, LangChain, OpenAI e outros
 - 📦 **Modularidade**: Arquitetura modular para desenvolvimento escalável
 - ⚡ **Performance**: Otimizado para aplicações em produção
@@ -30,54 +30,70 @@
 
 ```bash
 pip install llm-tool-fusion
+pipx install llm-tool-fusion
+uv add llm-tool-fusion
+poetry add llm-tool-fusion
+```
+
+### Preparando Suas Funções
+
+Você deve escrever as docstrings das funções no padrão Google para que os decoradores possam extrair as informações necessárias:
+
+```python
+"""
+    Descrição da função
+
+    Args:
+        argumento (tipo): Descrição do argumento
+    Returns:
+        tipo: Descrição
+"""
 ```
 
 ## 📋 Uso Básico (Exemplo com OpenAI)
 
 ```python
 from openai import OpenAI
-from llm_tool_fusion import ToolCaller, process_tool_calls
+from llm_tool_fusion import ToolCaller, FrameworkConstants
 
-# Inicializa o cliente OpenAI e o gerenciador de ferramentas
+# Inicialize o cliente OpenAI e o gerenciador de ferramentas
 client = OpenAI()
-manager = ToolCaller()
+manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI)  # model é opcional, framework padrão é OPENAI
 
-# Define uma ferramenta usando o decorador
+# Defina uma ferramenta usando o decorador
 @manager.tool
 def calculate_price(price: float, discount: float) -> float:
     """
     Calcula o preço final com desconto
-    
+
     Args:
         price (float): Preço base
         discount (float): Percentual de desconto
-        
     Returns:
         float: Preço final com desconto
     """
     return price * (1 - discount / 100)
 
-# Prepara a mensagem e faz a chamada ao LLM
+# Prepare a mensagem e faça a chamada ao LLM
 messages = [
     {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto"}
 ]
 
 # Primeira chamada ao LLM
 response = client.chat.completions.create(
-    model="gpt-4",
+    model=manager.get_model(),  # ou especifique o modelo diretamente, ex: "gpt-4.1"
     messages=messages,
     tools=manager.get_tools()
 )
 
 available_tools = manager.get_map_tools()
 async_available_tools = manager.get_name_async_tools()
-    
+
 # Processamento manual das chamadas de ferramentas
 if response.choices[0].message.tool_calls:
     tool_results = []
     for tool_call in response.choices[0].message.tool_calls:
         if tool_call.function.name in available_tools:
-            # Execução manual da ferramenta
             import json
             args = json.loads(tool_call.function.arguments)
 
@@ -107,9 +123,9 @@ if response.choices[0].message.tool_calls:
 print(final_response)
 ```
 
-## 🔄 Processamento Automático de Chamadas
+## 🔄 Processamento Automático de Chamadas de Ferramenta
 
-O llm-tool-fusion oferece um sistema robusto e simples para processar chamadas de ferramentas (instruções de uso em examples):
+O llm-tool-fusion oferece um sistema robusto e simples para processar chamadas de ferramentas automaticamente:
 
 ```python
 # Função para chamadas ao LLM
@@ -119,18 +135,11 @@ llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
     tools=tools
 )
 
-# Processamento automático de chamadas
-final_response = process_tool_calls(
+# Processamento automático de chamadas de ferramenta
+final_response = manager.process_tool_calls(
     response=response,           # Resposta inicial do LLM
     messages=messages,           # Histórico de mensagens
-    tool_caller=manager,         # Instância do ToolCaller
-    model="gpt-4",              # Modelo a ser usado
-    llm_call_fn=llm_call_fn,    # Função de chamada ao LLM
-    verbose=True,               # (opcional) Logs detalhados
-    verbose_time=True,          # (opcional) Métricas de tempo
-    clean_messages=True,        # (opcional) Retorna apenas o conteúdo da mensagem
-    use_async_poll=False,       # (opcional) Executa ferramentas assíncronas em paralelo
-    max_chained_calls=5         # (opcional) Máximo de chamadas encadeadas
+    llm_call_fn=llm_call_fn,     # Função para chamar o LLM
 )
 ```
 
@@ -138,15 +147,33 @@ final_response = process_tool_calls(
 
 - **`response`** (obrigatório): Resposta inicial do modelo
 - **`messages`** (obrigatório): Lista de mensagens do chat
-- **`tool_caller`** (obrigatório): Instância da classe ToolCaller
-- **`model`** (obrigatório): Nome do modelo
-- **`llm_call_fn`** (obrigatório): Função que faz a chamada ao modelo
+- **`llm_call_fn`** (obrigatório): Função que chama o modelo
+
+### Por que o `llm_call_fn` é obrigatório?
+
+Ele adiciona flexibilidade à biblioteca, permitindo que você use qualquer cliente ou framework de LLM que suporte tool calling. Você define como o LLM é chamado e a biblioteca gerencia a lógica das ferramentas.
 
 ### ⚙️ Parâmetros Opcionais
 
+Você pode customizar o comportamento do processamento usando a classe `ProcessingConfig`:
+
+```python
+from llm_tool_fusion import ToolCaller, FrameworkConstants, ProcessingConfig
+
+configuration = ProcessingConfig(
+    verbose=True,               # (opcional) Logs detalhados
+    verbose_time=True,          # (opcional) Métricas de tempo
+    clean_messages=True,        # (opcional) Retorna apenas o conteúdo da mensagem
+    use_async_poll=False,       # (opcional) Executa ferramentas assíncronas em paralelo
+    max_chained_calls=5         # (opcional) Máximo de chamadas encadeadas
+)
+
+manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI, config=configuration)
+```
+
 - **`verbose`**: Exibe logs detalhados da execução
 - **`verbose_time`**: Mostra métricas de tempo de execução
-- **`clean_messages`**: Retorna apenas o conteúdo da mensagem final
+- **`clean_messages`**: Retorna apenas o conteúdo final da mensagem
 - **`use_async_poll`**: Executa ferramentas assíncronas em paralelo para melhor performance
 - **`max_chained_calls`**: Limite de chamadas encadeadas (padrão: 5)
 
@@ -155,22 +182,15 @@ final_response = process_tool_calls(
 Quando você tem múltiplas ferramentas assíncronas sendo chamadas simultaneamente, o parâmetro `use_async_poll=True` oferece melhor performance:
 
 ```python
-# Sem async_poll: ferramentas executam sequencialmente
-final_response = process_tool_calls(
-    # ... outros parâmetros ...
-    use_async_poll=False  # Padrão: execução sequencial
-)
-
-# Com async_poll: ferramentas assíncronas executam em paralelo
-final_response = process_tool_calls(
-    # ... outros parâmetros ...
-    use_async_poll=True   # Execução paralela para melhor performance
+#Ele utiliza o asyncio.gather
+configuration = ProcessingConfig(
+    use_async_poll=True
 )
 ```
 
 ### ✨ Características Principais
 
-- 🔁 **Ciclo Automático**: Processa todas as chamadas de ferramentas até a conclusão
+- 🔁 **Loop Automático**: Processa todas as chamadas de ferramentas até a conclusão
 - ⚡ **Suporte Assíncrono**: Executa ferramentas síncronas e assíncronas automaticamente
 - 📝 **Logs Inteligentes**: Acompanhe a execução com logs detalhados e métricas de tempo
 - 🛡️ **Tratamento de Erros**: Gerenciamento robusto de erros durante a execução
@@ -182,15 +202,22 @@ final_response = process_tool_calls(
 Para aplicações que precisam de processamento assíncrono:
 
 ```python
-# Processamento assíncrono de chamadas
-final_response = await process_tool_calls_async(
+configuration = ProcessingConfig(
+    use_async_poll=True  # Recomendado para melhor performance
+)
+
+manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI, config=configuration)
+
+async_llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
+    model=model, 
+    messages=messages, 
+    tools=tools
+)
+
+final_response = await manager.process_tool_calls_async(
     response=response,
     messages=messages,
-    tool_caller=manager,
-    model="gpt-4",
     llm_call_fn=async_llm_call_fn,
-    verbose=True,
-    use_async_poll=True  # Recomendado para melhor performance
 )
 ```
 
@@ -200,10 +227,10 @@ O sistema funciona com diferentes frameworks através do parâmetro `framework` 
 
 ```python
 # Para OpenAI (padrão)
-manager = ToolCaller(framework="openai")
+manager = ToolCaller(model="gpt-4.1")  # ou framework=FrameworkConstants.OPENAI
 
 # Para Ollama
-manager = ToolCaller(framework="ollama")
+manager = ToolCaller(model="llama2", framework=FrameworkConstants.OLLAMA)
 llm_call_fn = lambda model, messages, tools: ollama.Client().chat(
     model=model,
     messages=messages,
@@ -217,17 +244,7 @@ llm_call_fn = lambda model, messages, tools: ollama.Client().chat(
 - **LangChain** - Framework completo para aplicações LLM
 - **Ollama** - Execução local de modelos
 - **Anthropic Claude** - API da Anthropic
-- **E muito mais...**
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Por favor:
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+- **E muitos outros...**
 
 ## 📄 Licença
 
@@ -235,14 +252,16 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ## ⚠️ Aviso de Compatibilidade
 
-> **Atenção:** A declaração de ferramentas (funções e decoradores) funciona com qualquer framework de LLM que suporte tool calling. Porém, o processamento automático de chamadas de ferramentas (`process_tool_calls` e `process_tool_calls_async`) possui suporte específico e otimizado apenas para alguns frameworks (como OpenAI, Ollama, etc). Para outros frameworks, pode ser necessário adaptar a função de chamada (`llm_call_fn`).
+> **Nota:** A declaração de ferramentas (funções e decoradores) funciona com qualquer framework de LLM que suporte tool calling. Porém, o processamento automático de chamadas de ferramentas (`process_tool_calls` e `process_tool_calls_async`) possui suporte específico e otimizado apenas para alguns frameworks (como OpenAI, Ollama, etc). Para outros frameworks, pode ser necessário adaptar a função de chamada (`llm_call_fn`).
+
+---
 
 ## 🛠️ Desenvolvimento
 
 ### Pré-requisitos
 
 - Python >= 3.12
-- pip ou poetry para gerenciamento de dependências
+- Recomendamos o uso do [UV](https://github.com/astral-sh/uv) para gerenciamento de dependências
 
 ### Configuração do Ambiente de Desenvolvimento
 
@@ -252,7 +271,8 @@ git clone https://github.com/caua1503/llm-tool-fusion.git
 cd llm-tool-fusion
 
 # Instale as dependências
-pip install -e .
+uv venv
+uv sync
 
 # Execute os testes
 python -m pytest

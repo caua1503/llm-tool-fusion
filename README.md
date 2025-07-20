@@ -34,28 +34,45 @@
 
 ```bash
 pip install llm-tool-fusion
+pipx install llm-tool-fusion
+uv add llm-tool-fusion
+poetry add llm-tool-fusion
+```
+
+### Preparing Your Functions
+
+You must write your function docstrings using the Google style so that the decorators can extract the necessary information:
+
+```python
+"""
+    Function description
+
+    Args:
+        argument (type): Description of the argument
+    Returns:
+        type: Description
+"""
 ```
 
 ### 📋 Basic Usage (Example with OpenAI)
 
 ```python
 from openai import OpenAI
-from llm_tool_fusion import ToolCaller, process_tool_calls
+from llm_tool_fusion import ToolCaller, FrameworkConstants
 
 # Initialize OpenAI client and tool manager
 client = OpenAI()
-manager = ToolCaller()
+manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI)  # model is optional, framework defaults to OPENAI
 
 # Define a tool using the decorator
 @manager.tool
 def calculate_price(price: float, discount: float) -> float:
     """
     Calculate final price with discount
-    
+
     Args:
         price (float): Base price
         discount (float): Discount percentage
-        
     Returns:
         float: Final price with discount
     """
@@ -68,27 +85,28 @@ messages = [
 
 # First LLM call
 response = client.chat.completions.create(
-    model="gpt-4",
+    model=manager.get_model(),  # or specify the model directly, e.g., "gpt-4.1"
     messages=messages,
     tools=manager.get_tools()
 )
 
 available_tools = manager.get_map_tools()
 async_available_tools = manager.get_name_async_tools()
-    
+
 # Manual processing of tool calls
 if response.choices[0].message.tool_calls:
     tool_results = []
     for tool_call in response.choices[0].message.tool_calls:
         if tool_call.function.name in available_tools:
-            # Manual tool execution
             import json
             args = json.loads(tool_call.function.arguments)
+            result = available_tools[tool_call.function.name](**args)
+            tool_results.append(result)
 
-print(final_response)
+print(tool_results)
 ```
 
-### 🔄 Automatic Call Processing
+### 🔄 Automatic Tool Call Processing
 
 llm-tool-fusion provides a robust and simple system for processing tool calls automatically:
 
@@ -101,17 +119,10 @@ llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
 )
 
 # Automatic tool call processing
-final_response = process_tool_calls(
+final_response = manager.process_tool_calls(
     response=response,           # Initial response from the LLM
     messages=messages,           # Message history
-    tool_caller=manager,         # ToolCaller instance
-    model="gpt-4",              # Model to be used
-    llm_call_fn=llm_call_fn,    # Function to call the LLM
-    verbose=True,               # (optional) Detailed logs
-    verbose_time=True,          # (optional) Time metrics
-    clean_messages=True,        # (optional) Returns only message content
-    use_async_poll=False,       # (optional) Execute async tools in parallel
-    max_chained_calls=5         # (optional) Maximum chained calls
+    llm_call_fn=llm_call_fn,     # Function to call the LLM
 )
 ```
 
@@ -119,11 +130,29 @@ final_response = process_tool_calls(
 
 - **`response`** (required): Initial response from the model
 - **`messages`** (required): List of chat messages
-- **`tool_caller`** (required): ToolCaller class instance
-- **`model`** (required): Model name
 - **`llm_call_fn`** (required): Function that calls the model
 
+#### Why is `llm_call_fn` required?
+
+It adds flexibility to the library, allowing you to use any LLM client or framework that supports tool calling. You define how the LLM is called, and the library handles the tool call logic.
+
 #### ⚙️ Optional Parameters
+
+You can customize the processing behavior using the `ProcessingConfig` class:
+
+```python
+from llm_tool_fusion import ToolCaller, FrameworkConstants, ProcessingConfig
+
+configuration = ProcessingConfig(
+    verbose=True,               # (optional) Detailed logs
+    verbose_time=True,          # (optional) Time metrics
+    clean_messages=True,        # (optional) Returns only message content
+    use_async_poll=False,       # (optional) Execute async tools in parallel
+    max_chained_calls=5         # (optional) Maximum chained calls
+)
+
+manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI, config=configuration)
+```
 
 - **`verbose`**: Shows detailed execution logs
 - **`verbose_time`**: Shows execution time metrics
@@ -136,16 +165,8 @@ final_response = process_tool_calls(
 When you have multiple asynchronous tools being called simultaneously, the `use_async_poll=True` parameter offers better performance:
 
 ```python
-# Without async_poll: tools execute sequentially
-final_response = process_tool_calls(
-    # ... other parameters ...
-    use_async_poll=False  # Default: sequential execution
-)
-
-# With async_poll: async tools execute in parallel
-final_response = process_tool_calls(
-    # ... other parameters ...
-    use_async_poll=True   # Parallel execution for better performance
+configuration = ProcessingConfig(
+    use_async_poll=True
 )
 ```
 
@@ -163,15 +184,23 @@ final_response = process_tool_calls(
 For applications that need asynchronous processing:
 
 ```python
-# Asynchronous processing of tool calls
-final_response = await process_tool_calls_async(
+#It uses asyncio.gather
+configuration = ProcessingConfig(
+    use_async_poll=True  # Recommended for better performance
+)
+
+manager = ToolCaller(model="gpt-4.1", framework=FrameworkConstants.OPENAI, config=configuration)
+
+async_llm_call_fn = lambda model, messages, tools: client.chat.completions.create(
+    model=model, 
+    messages=messages, 
+    tools=tools
+)
+
+final_response = await manager.process_tool_calls_async(
     response=response,
     messages=messages,
-    tool_caller=manager,
-    model="gpt-4",
     llm_call_fn=async_llm_call_fn,
-    verbose=True,
-    use_async_poll=True  # Recommended for better performance
 )
 ```
 
@@ -181,10 +210,10 @@ The system works with different frameworks through the `framework` parameter in 
 
 ```python
 # For OpenAI (default)
-manager = ToolCaller(framework="openai")
+manager = ToolCaller(model="gpt-4.1")  # or framework=FrameworkConstants.OPENAI
 
 # For Ollama
-manager = ToolCaller(framework="ollama")
+manager = ToolCaller(model="llama2", framework=FrameworkConstants.OLLAMA)
 llm_call_fn = lambda model, messages, tools: ollama.Client().chat(
     model=model,
     messages=messages,
@@ -199,16 +228,6 @@ llm_call_fn = lambda model, messages, tools: ollama.Client().chat(
 - **Ollama** - Local model execution
 - **Anthropic Claude** - Anthropic's API
 - **And many more...**
-
-### 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the project
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ### 📄 License
 
@@ -225,7 +244,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Prerequisites
 
 - Python >= 3.12
-- pip or poetry for dependency management
+- We recommend using [UV](https://github.com/astral-sh/uv) for dependency management
 
 ### Setup Development Environment
 
@@ -235,7 +254,8 @@ git clone https://github.com/caua1503/llm-tool-fusion.git
 cd llm-tool-fusion
 
 # Install dependencies
-pip install -e .
+uv venv
+uv sync
 
 # Run tests
 python -m pytest
@@ -257,7 +277,5 @@ llm-tool-fusion/
 ```
 
 ---
-
-**⭐ Se este projeto foi útil para você, considere dar uma estrela no GitHub!**
 
 **⭐ If this project was helpful to you, consider starring it on GitHub!**
