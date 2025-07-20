@@ -1,8 +1,3 @@
-import os
-import sys
-# Adiciona o diretório pai ao sys.path | Adds the parent directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import pytest
 from llm_tool_fusion._utils import _extract_docstring
 

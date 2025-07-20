@@ -150,7 +150,7 @@ def llm_tool_fusion_processing():
         return f"Async tool result: {param}"
     
     messages = [
-        {"role": "user", "content": "oi, tudo bem?"}
+        {"role": "user", "content": "Calcule o preço final de um produto de R$100 com 20% de desconto"}
     ]
     # Primeira chamada ao LLM
     # First LLM call
